@@ -7,7 +7,7 @@ import './App.css';
 
 function App() {
   return (
-    <Router>
+    <Router basename={process.env.PUBLIC_URL}>
       <div className="flex min-h-screen">
         <Sidebar />
         <main className="flex-1 bg-bgPrimary">
