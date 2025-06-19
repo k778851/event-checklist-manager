@@ -1,0 +1,17 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+@import "./theme.css";
+@import "./assets/font/pretendardvariable.css";
+
+body {
+  margin: 0;
+  font-family: 'Pretendard Variable', 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', 'Nanum Gothic', '나눔고딕', '돋움', Dotum, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
