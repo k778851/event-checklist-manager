@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { MdEvent, MdChecklist, MdUpdate, MdTrendingUp, MdLock, MdLockOpen } from 'react-icons/md';
+import { MdEvent, MdChecklist, MdUpdate, MdTrendingUp, MdLock, MdLockOpen, MdSchedule, MdCheckCircle, MdExpandMore, MdExpandLess } from 'react-icons/md';
+import dayjs from 'dayjs';
 
-const StatCard = ({ icon, title, value }) => (
+const StatCard = ({ icon, title, value, color }) => (
   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
     <div className="flex items-center">
-      <div className="p-2 bg-primary-50 rounded-lg">
+      <div className={`p-2 rounded-lg ${color}`}>
         {icon}
       </div>
       <h3 className="ml-3 text-gray-600 text-sm font-medium">{title}</h3>
@@ -16,8 +17,8 @@ const StatCard = ({ icon, title, value }) => (
 );
 
 const EventCard = ({ event }) => (
-  <div className="bg-white p-4 rounded-lg border border-gray-100">
-    <div className="flex items-center justify-between">
+  <div className="bg-white p-4 rounded-lg border border-gray-100 hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2">
         <h4 className="font-medium text-gray-800">{event.title}</h4>
         <span className={`px-2 py-1 rounded-full text-xs ${
@@ -37,15 +38,13 @@ const EventCard = ({ event }) => (
         {event.status}
       </span>
     </div>
-    <div className="mt-3">
-      <div className="w-full bg-gray-100 rounded-full h-2">
-        <div 
-          className="bg-primary-500 h-2 rounded-full" 
-          style={{ width: `${event.progress}%` }}
-        />
-      </div>
-      <p className="mt-1 text-xs text-gray-500 text-right">{event.progress}% 완료</p>
+    <div className="w-full bg-gray-100 rounded-full h-2">
+      <div 
+        className="bg-primary-500 h-2 rounded-full" 
+        style={{ width: `${event.progress}%` }}
+      />
     </div>
+    <p className="mt-1 text-xs text-gray-500 text-right">{event.progress}% 완료</p>
   </div>
 );
 
@@ -62,43 +61,56 @@ const RecentActivity = ({ activity }) => (
 );
 
 const Dashboard = () => {
-  // 샘플 데이터
-  const stats = [
-    {
-      icon: <MdEvent className="w-6 h-6 text-primary-600" />,
-      title: "진행중인 행사",
-      value: "5"
-    }
-  ];
+  // 월 선택 상태를 가장 먼저 선언
+  const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
 
+  // 이번 달 시작일과 종료일 계산
+  const monthStart = dayjs(selectedMonth + '-01').startOf('month').format('YYYY.MM.DD');
+  const monthEnd = dayjs(selectedMonth + '-01').endOf('month').format('YYYY.MM.DD');
+
+  // 샘플 데이터 (모든 date를 monthStart ~ monthEnd로)
   const events = [
     {
       title: "2024 신년 행사",
       category: "총회",
       status: "진행중",
-      date: "2024.01.15 - 2024.01.20",
+      date: `${monthStart} - ${monthEnd}`,
       progress: 75
     },
     {
       title: "봄 시즌 프로모션",
       category: "지역",
       status: "예정",
-      date: "2024.03.01 - 2024.03.15",
+      date: `${monthStart} - ${monthEnd}`,
       progress: 30
     },
     {
       title: "청년부 수련회",
       category: "지파",
       status: "진행중",
-      date: "2024.02.01 - 2024.02.03",
+      date: `${monthStart} - ${monthEnd}`,
       progress: 45
     },
     {
       title: "찬양팀 워크샵",
       category: "부서",
       status: "예정",
-      date: "2024.02.15 - 2024.02.16",
+      date: `${monthStart} - ${monthEnd}`,
       progress: 15
+    },
+    {
+      title: "2023 성탄절 행사",
+      category: "총회",
+      status: "완료",
+      date: `${monthStart} - ${monthEnd}`,
+      progress: 100
+    },
+    {
+      title: "가을 수확감사절",
+      category: "지역",
+      status: "완료",
+      date: `${monthStart} - ${monthEnd}`,
+      progress: 100
     }
   ];
 
@@ -115,36 +127,205 @@ const Dashboard = () => {
     }
   ];
 
-  // 진행중인 행사 수 계산
-  const ongoingEventsCount = events.filter(event => event.status === "진행중").length;
+  // 샘플 카드 데이터 (이번 달, 실제 데이터 없을 때만)
+  const sampleOngoing = [
+    {
+      title: '샘플 행사',
+      category: '총회',
+      status: '진행중',
+      progress: 60
+    }
+  ];
+  const sampleScheduled = [
+    {
+      title: '샘플 예정 행사',
+      category: '지역',
+      status: '예정',
+      progress: 0
+    }
+  ];
+  const sampleCompleted = [
+    {
+      title: '샘플 완료 행사',
+      category: '지파',
+      status: '완료',
+      progress: 100
+    }
+  ];
 
-  // stats 데이터 업데이트
-  stats[0].value = ongoingEventsCount;
+  // 월 이동 함수
+  const handlePrevMonth = () => {
+    setSelectedMonth(dayjs(selectedMonth + '-01').subtract(1, 'month').format('YYYY-MM'));
+  };
+  const handleNextMonth = () => {
+    setSelectedMonth(dayjs(selectedMonth + '-01').add(1, 'month').format('YYYY-MM'));
+  };
+
+  // 행사 월별 필터링 함수
+  const filterByMonth = (event) => {
+    if (!event.date) return false;
+    const [start, end] = event.date.split(' - ');
+    const startMonth = dayjs(start.replace(/\./g, '-')).format('YYYY-MM');
+    const endMonth = dayjs(end.replace(/\./g, '-')).format('YYYY-MM');
+    return selectedMonth >= startMonth && selectedMonth <= endMonth;
+  };
+
+  // 월별 행사 리스트
+  const filteredEvents = events.filter(filterByMonth);
+  const ongoingEvents = filteredEvents.filter(event => event.status === "진행중");
+  const scheduledEvents = filteredEvents.filter(event => event.status === "예정");
+  const completedEvents = filteredEvents.filter(event => event.status === "완료");
+
+  // isCurrentMonth: 이번 달인지 여부
+  const isCurrentMonth = selectedMonth === dayjs().format('YYYY-MM');
+
+  // 통계 계산
+  const stats = [
+    {
+      icon: <MdEvent className="w-6 h-6 text-primary-600" />,
+      title: "진행중인 행사",
+      value: ongoingEvents.length,
+      color: "bg-primary-50"
+    },
+    {
+      icon: <MdSchedule className="w-6 h-6 text-warning-600" />,
+      title: "예정중인 행사",
+      value: scheduledEvents.length,
+      color: "bg-warning-50"
+    },
+    {
+      icon: <MdCheckCircle className="w-6 h-6 text-success-600" />,
+      title: "완료된  행사",
+      value: completedEvents.length,
+      color: "bg-success-50"
+    }
+  ];
+
+  // 아코디언 상태 관리
+  const [openOngoing, setOpenOngoing] = useState(true);
+  const [openScheduled, setOpenScheduled] = useState(false);
+  const [openCompleted, setOpenCompleted] = useState(false);
 
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">대시보드</h1>
       
+      {/* 월 선택 화살표 네비게이션 */}
+      <div className="mb-4 flex items-center gap-4">
+        <button
+          className="p-2 rounded-full hover:bg-gray-100 text-xl"
+          onClick={handlePrevMonth}
+          aria-label="이전 달"
+        >
+          ◀
+        </button>
+        <span className="font-semibold text-lg text-gray-800 min-w-[120px] text-center">
+          {dayjs(selectedMonth + '-01').format('YYYY년 MM월')}
+        </span>
+        <button
+          className="p-2 rounded-full hover:bg-gray-100 text-xl"
+          onClick={handleNextMonth}
+          aria-label="다음 달"
+        >
+          ▶
+        </button>
+      </div>
+
       {/* 통계 카드 */}
-      <div className="mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat, index) => (
           <StatCard key={index} {...stat} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 진행중인 행사 */}
-        <div className="lg:col-span-2">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">진행중인 행사</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {events.filter(event => event.status === "진행중").map((event, index) => (
-              <EventCard key={index} event={event} />
-            ))}
+      {/* 상태별 행사 + 최근 활동 2단 레이아웃 */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* 상태별 행사 아코디언 (좌측 3/4) */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* 진행중인 행사 아코디언 */}
+          <div>
+            <button
+              className="w-full flex items-center justify-between text-xl font-bold text-gray-900 mb-2 px-2 py-3 rounded hover:bg-gray-50 transition"
+              onClick={() => setOpenOngoing((prev) => !prev)}
+              aria-expanded={openOngoing}
+            >
+              <span className="flex items-center gap-2">
+                <MdEvent className="w-5 h-5 text-primary-600" />
+                진행중인 행사 ({ongoingEvents.length})
+              </span>
+              {openOngoing ? <MdExpandLess /> : <MdExpandMore />}
+            </button>
+            {openOngoing && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 mb-4 animate-fadein">
+                {ongoingEvents.map((event, index) => (
+                  <EventCard key={index} event={event} />
+                ))}
+                {ongoingEvents.length === 0 && isCurrentMonth && (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    진행중인 행사가 없습니다.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 예정행사 아코디언 */}
+          <div>
+            <button
+              className="w-full flex items-center justify-between text-xl font-bold text-gray-900 mb-2 px-2 py-3 rounded hover:bg-gray-50 transition"
+              onClick={() => setOpenScheduled((prev) => !prev)}
+              aria-expanded={openScheduled}
+            >
+              <span className="flex items-center gap-2">
+                <MdSchedule className="w-5 h-5 text-warning-600" />
+                예정중인 행사 ({scheduledEvents.length})
+              </span>
+              {openScheduled ? <MdExpandLess /> : <MdExpandMore />}
+            </button>
+            {openScheduled && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 mb-4 animate-fadein">
+                {scheduledEvents.map((event, index) => (
+                  <EventCard key={index} event={event} />
+                ))}
+                {scheduledEvents.length === 0 && isCurrentMonth && (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    예정된 행사가 없습니다.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 완료행사 아코디언 */}
+          <div>
+            <button
+              className="w-full flex items-center justify-between text-xl font-bold text-gray-900 mb-2 px-2 py-3 rounded hover:bg-gray-50 transition"
+              onClick={() => setOpenCompleted((prev) => !prev)}
+              aria-expanded={openCompleted}
+            >
+              <span className="flex items-center gap-2">
+                <MdCheckCircle className="w-5 h-5 text-success-600" />
+                완료된 행사 ({completedEvents.length})
+              </span>
+              {openCompleted ? <MdExpandLess /> : <MdExpandMore />}
+            </button>
+            {openCompleted && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 mb-4 animate-fadein">
+                {completedEvents.map((event, index) => (
+                  <EventCard key={index} event={event} />
+                ))}
+                {completedEvents.length === 0 && isCurrentMonth && (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    완료된 행사가 없습니다.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 최근 활동 */}
-        <div>
+        {/* 최근 활동 (우측 1/4) */}
+        <div className="lg:col-span-1 mt-12 lg:mt-0">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">최근 활동</h2>
           <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-100">
             {recentActivities.map((activity, index) => (

@@ -71,6 +71,11 @@ const EventManagement = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // 분류별 행사 리스트
+  const ongoingEvents = filteredEvents.filter(event => event.status === '진행중');
+  const scheduledEvents = filteredEvents.filter(event => event.status === '예정');
+  const completedEvents = filteredEvents.filter(event => event.status === '완료');
+
   const handleCreateEvent = (eventData) => {
     const newEvent = {
       id: Date.now(), // 임시 ID 생성
@@ -148,90 +153,237 @@ const EventManagement = () => {
         </div>
       </div>
 
-      {/* 행사 목록 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEvents.map(event => (
-          <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <h3 className="font-medium text-gray-800">{event.title}</h3>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  event.category === '총회' ? 'bg-red-100 text-red-600' :
-                  event.category === '지파' ? 'bg-sky-100 text-sky-600' :
-                  event.category === '지역' ? 'bg-amber-100 text-amber-600' :
-                  'bg-green-100 text-green-600'
-                }`}>
-                  {event.category}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleEditClick(event)}
-                  className={`p-1.5 rounded-full transition-colors ${
-                    event.status === '완료' 
-                      ? 'text-gray-400 hover:bg-gray-100' 
-                      : 'text-primary-600 hover:bg-primary-50'
-                  }`}
-                  title={event.status === '완료' ? '완료된 행사입니다' : '행사 정보 수정'}
-                >
-                  <MdEdit className="w-5 h-5" />
-                </button>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  event.status === '진행중' ? 'bg-primary-50 text-primary-600' :
-                  event.status === '예정' ? 'bg-warning-50 text-warning-600' :
-                  'bg-success-50 text-success-600'
-                }`}>
-                  {event.status}
-                </span>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              {/* 부서 목록 */}
-              <div className="flex flex-wrap gap-2">
-                {event.departments.map((dept, index) => (
-                  <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                    {dept}
-                  </span>
-                ))}
-              </div>
-
-              {/* 진행률과 체크리스트 현황을 가로로 배치 */}
-              <div className="flex items-center gap-6">
-                <div className="flex-1">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">진행률</span>
-                    <span className="text-gray-800 font-medium">{event.progress}%</span>
+      {/* 행사 목록 - 대시보드 스타일 분류 */}
+      <div className="space-y-10">
+        {/* 진행중인 행사 */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            진행중인 행사 ({ongoingEvents.length})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {ongoingEvents.map(event => (
+              <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-gray-800">{event.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      event.category === '총회' ? 'bg-red-100 text-red-600' :
+                      event.category === '지파' ? 'bg-sky-100 text-sky-600' :
+                      event.category === '지역' ? 'bg-amber-100 text-amber-600' :
+                      'bg-green-100 text-green-600'
+                    }`}>
+                      {event.category}
+                    </span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div 
-                      className="bg-primary-500 h-2 rounded-full" 
-                      style={{ width: `${event.progress}%` }}
-                    />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEditClick(event)}
+                      className={`p-1.5 rounded-full transition-colors ${
+                        event.status === '완료' 
+                          ? 'text-gray-400 hover:bg-gray-100' 
+                          : 'text-primary-600 hover:bg-primary-50'
+                      }`}
+                      title={event.status === '완료' ? '완료된 행사입니다' : '행사 정보 수정'}
+                    >
+                      <MdEdit className="w-5 h-5" />
+                    </button>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      event.status === '진행중' ? 'bg-primary-50 text-primary-600' :
+                      event.status === '예정' ? 'bg-warning-50 text-warning-600' :
+                      'bg-success-50 text-success-600'
+                    }`}>
+                      {event.status}
+                    </span>
                   </div>
                 </div>
-                <div className="text-sm text-gray-600 whitespace-nowrap">
-                  {event.completedTasks}/{event.totalTasks} 완료
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {event.departments.map((dept, index) => (
+                      <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                        {dept}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">진행률</span>
+                        <span className="text-gray-800 font-medium">{event.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div 
+                          className="bg-primary-500 h-2 rounded-full" 
+                          style={{ width: `${event.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600 whitespace-nowrap">
+                      {event.completedTasks}/{event.totalTasks} 완료
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
+            {ongoingEvents.length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                진행중인 행사가 없습니다.
+              </div>
+            )}
           </div>
-        ))}
-      </div>
-
-      {/* 검색 결과가 없을 때 */}
-      {filteredEvents.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">
-            {searchTerm || filterType !== 'all' 
-              ? '검색 조건에 맞는 행사가 없습니다.' 
-              : '등록된 행사가 없습니다.'}
-          </p>
-          <p className="text-gray-400 text-sm mt-2">
-            새 행사를 등록해보세요!
-          </p>
         </div>
-      )}
+        {/* 예정중인 행사 */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            예정중인 행사 ({scheduledEvents.length})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {scheduledEvents.map(event => (
+              <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-gray-800">{event.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      event.category === '총회' ? 'bg-red-100 text-red-600' :
+                      event.category === '지파' ? 'bg-sky-100 text-sky-600' :
+                      event.category === '지역' ? 'bg-amber-100 text-amber-600' :
+                      'bg-green-100 text-green-600'
+                    }`}>
+                      {event.category}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEditClick(event)}
+                      className={`p-1.5 rounded-full transition-colors ${
+                        event.status === '완료' 
+                          ? 'text-gray-400 hover:bg-gray-100' 
+                          : 'text-primary-600 hover:bg-primary-50'
+                      }`}
+                      title={event.status === '완료' ? '완료된 행사입니다' : '행사 정보 수정'}
+                    >
+                      <MdEdit className="w-5 h-5" />
+                    </button>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      event.status === '진행중' ? 'bg-primary-50 text-primary-600' :
+                      event.status === '예정' ? 'bg-warning-50 text-warning-600' :
+                      'bg-success-50 text-success-600'
+                    }`}>
+                      {event.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {event.departments.map((dept, index) => (
+                      <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                        {dept}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">진행률</span>
+                        <span className="text-gray-800 font-medium">{event.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div 
+                          className="bg-primary-500 h-2 rounded-full" 
+                          style={{ width: `${event.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600 whitespace-nowrap">
+                      {event.completedTasks}/{event.totalTasks} 완료
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {scheduledEvents.length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                예정중인 행사가 없습니다.
+              </div>
+            )}
+          </div>
+        </div>
+        {/* 완료된 행사 */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            완료된 행사 ({completedEvents.length})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {completedEvents.map(event => (
+              <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-gray-800">{event.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      event.category === '총회' ? 'bg-red-100 text-red-600' :
+                      event.category === '지파' ? 'bg-sky-100 text-sky-600' :
+                      event.category === '지역' ? 'bg-amber-100 text-amber-600' :
+                      'bg-green-100 text-green-600'
+                    }`}>
+                      {event.category}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEditClick(event)}
+                      className={`p-1.5 rounded-full transition-colors ${
+                        event.status === '완료' 
+                          ? 'text-gray-400 hover:bg-gray-100' 
+                          : 'text-primary-600 hover:bg-primary-50'
+                      }`}
+                      title={event.status === '완료' ? '완료된 행사입니다' : '행사 정보 수정'}
+                    >
+                      <MdEdit className="w-5 h-5" />
+                    </button>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      event.status === '진행중' ? 'bg-primary-50 text-primary-600' :
+                      event.status === '예정' ? 'bg-warning-50 text-warning-600' :
+                      'bg-success-50 text-success-600'
+                    }`}>
+                      {event.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {event.departments.map((dept, index) => (
+                      <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                        {dept}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">진행률</span>
+                        <span className="text-gray-800 font-medium">{event.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div 
+                          className="bg-primary-500 h-2 rounded-full" 
+                          style={{ width: `${event.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600 whitespace-nowrap">
+                      {event.completedTasks}/{event.totalTasks} 완료
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {completedEvents.length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                완료된 행사가 없습니다.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* 행사 등록 모달 */}
       <EventCreateModal

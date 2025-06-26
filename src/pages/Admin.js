@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MdAdd, MdEdit, MdDelete, MdSave, MdClose } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdSave, MdClose, MdInfo } from 'react-icons/md';
 
 const Admin = () => {
   // 고정된 부서 목록
@@ -12,33 +12,39 @@ const Admin = () => {
     '보건후생복지부', '봉사교통부'
   ];
 
+  // 고유번호 생성 함수
+  function generateUniqueId() {
+    // 8자리-5자리 랜덤
+    const part1 = Math.random().toString().slice(2, 10).padEnd(8, '0');
+    const part2 = Math.random().toString().slice(2, 7).padEnd(5, '0');
+    return `${part1}-${part2}`;
+  }
+
   // 사용자 관리 상태
   const [users, setUsers] = useState([
-    { id: 1, name: '김관리', email: 'admin@example.com', department: '기획부', role: '총괄부서 관리자' },
-    { id: 2, name: '이담당', email: 'hong@example.com', department: '홍보부', role: '부서 관리자' },
-    { id: 3, name: '박실무', email: 'op@example.com', department: '전도부', role: '부서 관리자' }
+    { id: 1, name: '김관리', department: '기획부', role: '총괄부서 관리자', uniqueId: '00420000-00123' },
+    { id: 2, name: '이담당', department: '홍보부', role: '부서 관리자', uniqueId: '00420000-00123' },
+    { id: 3, name: '박실무', department: '전도부', role: '부서 관리자', uniqueId: '00420000-00123' }
   ]);
 
   // 사용자 수정 모드 상태
   const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({
     name: '',
-    email: '',
     department: '',
     role: '부서 관리자'
   });
 
   // 사용자 관리 함수들
   const handleAddUser = () => {
-    if (newUser.name.trim() === '' || newUser.email.trim() === '' || newUser.department === '') return;
-    
+    if (newUser.name.trim() === '' || newUser.department === '') return;
     setUsers(prev => [...prev, {
       id: Date.now(),
-      ...newUser
+      ...newUser,
+      uniqueId: generateUniqueId()
     }]);
     setNewUser({
       name: '',
-      email: '',
       department: '',
       role: '부서 관리자'
     });
@@ -61,8 +67,11 @@ const Admin = () => {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">사용자 관리</h1>
-      
+      <h1 className="text-2xl font-bold text-gray-800 mb-2">사용자 관리</h1>
+      <p className="text-gray-600 mb-6 text-sm flex items-center gap-2">
+        <MdInfo className="w-5 h-5 text-primary-500" />
+        권한 안내: <b>총괄부서 관리자</b>는 모든 부서를 관리할 수 있고, <b>부서 관리자</b>는 자신의 부서만 관리할 수 있습니다.
+      </p>
       {/* 새 사용자 추가 */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
         <div className="flex gap-4">
@@ -72,13 +81,6 @@ const Admin = () => {
             className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             value={newUser.name}
             onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
-          />
-          <input
-            type="email"
-            placeholder="이메일"
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={newUser.email}
-            onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
           />
           <select
             className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -107,37 +109,20 @@ const Admin = () => {
           </button>
         </div>
       </div>
-
       {/* 사용자 목록 */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="grid grid-cols-12 gap-4 p-4 border-b border-gray-200 font-medium text-gray-600">
+          <div className="col-span-2">부서</div>
           <div className="col-span-2">이름</div>
-          <div className="col-span-3">이메일</div>
-          <div className="col-span-3">부서</div>
-          <div className="col-span-2">권한</div>
-          <div className="col-span-2">관리</div>
+          <div className="col-span-3">고유번호</div>
+          <div className="col-span-3">권한</div>
+          <div className="col-span-2">편집</div>
         </div>
         {users.map(user => (
           <div key={user.id} className="grid grid-cols-12 gap-4 p-4 border-b border-gray-100 items-center">
             {editingUser?.id === user.id ? (
               <>
                 <div className="col-span-2">
-                  <input
-                    type="text"
-                    className="w-full px-3 py-1 border border-gray-200 rounded-lg"
-                    value={editingUser.name}
-                    onChange={(e) => setEditingUser(prev => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
-                <div className="col-span-3">
-                  <input
-                    type="email"
-                    className="w-full px-3 py-1 border border-gray-200 rounded-lg"
-                    value={editingUser.email}
-                    onChange={(e) => setEditingUser(prev => ({ ...prev, email: e.target.value }))}
-                  />
-                </div>
-                <div className="col-span-3">
                   <select
                     className="w-full px-3 py-1 border border-gray-200 rounded-lg"
                     value={editingUser.department}
@@ -149,6 +134,22 @@ const Admin = () => {
                   </select>
                 </div>
                 <div className="col-span-2">
+                  <input
+                    type="text"
+                    className="w-full px-3 py-1 border border-gray-200 rounded-lg"
+                    value={editingUser.name}
+                    onChange={(e) => setEditingUser(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                <div className="col-span-3">
+                  <input
+                    type="text"
+                    className="w-full px-3 py-1 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed"
+                    value={editingUser.uniqueId}
+                    disabled
+                  />
+                </div>
+                <div className="col-span-3">
                   <select
                     className="w-full px-3 py-1 border border-gray-200 rounded-lg"
                     value={editingUser.role}
@@ -175,10 +176,10 @@ const Admin = () => {
               </>
             ) : (
               <>
+                <div className="col-span-2">{user.department}</div>
                 <div className="col-span-2">{user.name}</div>
-                <div className="col-span-3">{user.email}</div>
-                <div className="col-span-3">{user.department}</div>
-                <div className="col-span-2">
+                <div className="col-span-3 font-mono tracking-wider">{user.uniqueId}</div>
+                <div className="col-span-3">
                   <span className={`px-2 py-1 rounded-full text-xs ${
                     user.role === '총괄부서 관리자' 
                       ? 'bg-primary-50 text-primary-600' 
