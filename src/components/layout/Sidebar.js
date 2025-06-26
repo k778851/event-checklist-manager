@@ -21,7 +21,7 @@ export default function Sidebar() {
     { path: "/checklist", icon: <MdChecklist className="w-5 h-5" />, label: "체크리스트" },
     { path: "/timeline", icon: <MdTimeline className="w-5 h-5" />, label: "타임라인" },
     { path: "/excel", icon: <MdUpload className="w-5 h-5" />, label: "엑셀 업로드/다운로드" },
-    { path: "/admin", icon: <MdPeople className="w-5 h-5" />, label: "부서/사용자 관리" },
+    { path: "/admin", icon: <MdPeople className="w-5 h-5" />, label: "사용자 관리" },
     { path: "/settings", icon: <MdSettings className="w-5 h-5" />, label: "시스템 설정" },
     { path: "/help", icon: <MdHelp className="w-5 h-5" />, label: "도움말" },
   ];

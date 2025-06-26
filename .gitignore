@@ -21,3 +21,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# 기획서 및 문서
+*기획서*.md
+*개발기획서*.md
