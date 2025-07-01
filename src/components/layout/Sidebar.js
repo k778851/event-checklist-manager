@@ -30,6 +30,17 @@ export default function Sidebar() {
     alert("로그아웃 되었습니다.");
   };
 
+  const isActive = (item) => {
+    if (item.path === "/events") {
+      return (
+        location.pathname === "/events" ||
+        location.pathname.startsWith("/checklist/pre-event/") ||
+        location.pathname.startsWith("/checklist/")
+      );
+    }
+    return location.pathname === item.path;
+  };
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-100 flex flex-col z-50">
       {/* Header */}
@@ -40,18 +51,17 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
         {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
           return (
             <Link
               key={item.path}
               to={item.path}
               className={`flex items-center space-x-4 px-4 py-3 rounded-lg transition-colors duration-200 ${
-                isActive
+                isActive(item)
                   ? "bg-blue-50 text-blue-600 font-semibold"
                   : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
               }`}
             >
-              <span className={`${isActive ? "text-blue-600" : "text-gray-400"}`}>
+              <span className={`${isActive(item) ? "text-blue-600" : "text-gray-400"}`}>
                 {item.icon}
               </span>
               <span>{item.label}</span>

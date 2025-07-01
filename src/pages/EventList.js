@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { MdAdd, MdFilterList, MdSearch, MdEdit } from 'react-icons/md';
+import { MdAdd, MdFilterList, MdSearch, MdEdit, MdChecklist, MdTimeline } from 'react-icons/md';
 import EventCreateModal from '../components/events/EventCreateModal';
 import EventEditModal from '../components/events/EventEditModal';
+import ChecklistTabs from '../components/checklist/ChecklistTabs';
+import TimelineView from '../components/timeline/TimelineView';
+import sampleEvents from '../sampleEvents';
 import { useNavigate } from 'react-router-dom';
 
 // 고정된 부서 목록
@@ -20,44 +23,13 @@ const EventList = ({ onSelectEvent, checklistType }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [currentView, setCurrentView] = useState('list'); // 'list', 'checklist', 'timeline'
+  const [selectedEventForDetail, setSelectedEventForDetail] = useState(null);
+  const [checklistTab, setChecklistTab] = useState('pre');
   const navigate = useNavigate();
 
   // 실제 상태로 관리되는 행사 데이터
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: "2024 신년 행사",
-      category: "총회",
-      status: "진행중",
-      date: "2024-01-15",
-      departments: ["기획부", "홍보부", "전도부"],
-      progress: 75,
-      totalTasks: 48,
-      completedTasks: 36
-    },
-    {
-      id: 2,
-      title: "봄 시즌 프로모션",
-      category: "지역",
-      status: "예정",
-      date: "2024-03-01",
-      departments: ["홍보부", "문화부"],
-      progress: 30,
-      totalTasks: 24,
-      completedTasks: 8
-    },
-    {
-      id: 3,
-      title: "청년부 수련회",
-      category: "지파",
-      status: "완료",
-      date: "2024-02-01",
-      departments: ["기획부", "청년회"],
-      progress: 100,
-      totalTasks: 36,
-      completedTasks: 36
-    }
-  ]);
+  const [events, setEvents] = useState(sampleEvents);
 
   // 진행중인 행사 갯수 계산
   const ongoingEventsCount = events.filter(event => event.status === "진행중").length;
@@ -109,6 +81,42 @@ const EventList = ({ onSelectEvent, checklistType }) => {
     setSelectedEvent(event);
     setIsEditModalOpen(true);
   };
+
+  const handleViewChecklist = (event) => {
+    setSelectedEventForDetail(event);
+    setChecklistTab('pre');
+    setCurrentView('checklist');
+  };
+
+  const handleViewDayChecklist = (event) => {
+    setSelectedEventForDetail(event);
+    setChecklistTab('day');
+    setCurrentView('checklist');
+  };
+
+  const handleViewTimeline = (event) => {
+    setSelectedEventForDetail(event);
+    setChecklistTab('timeline');
+    setCurrentView('checklist');
+  };
+
+  const handleBackToList = () => {
+    setCurrentView('list');
+    setSelectedEventForDetail(null);
+  };
+
+  // 체크리스트 또는 타임라인 뷰일 때
+  if (currentView === 'checklist' && selectedEventForDetail) {
+    return (
+      <div>
+        <ChecklistTabs
+          event={selectedEventForDetail}
+          onBack={handleBackToList}
+          activeTab={checklistTab}
+        />
+      </div>
+    );
+  }
 
   // 메인 행사 리스트 뷰
   return (
@@ -215,16 +223,25 @@ const EventList = ({ onSelectEvent, checklistType }) => {
                   {/* 체크리스트 이동 버튼 */}
                   <div className="flex gap-2 pt-2">
                     <button
-                      onClick={() => navigate('/checklist')}
+                      onClick={() => handleViewChecklist(event)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
                     >
+                      <MdChecklist className="w-4 h-4" />
                       사전 체크리스트
                     </button>
                     <button
-                      onClick={() => navigate('/timeline')}
+                      onClick={() => handleViewDayChecklist(event)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
                     >
+                      <MdChecklist className="w-4 h-4" />
                       당일 체크리스트
+                    </button>
+                    <button
+                      onClick={() => handleViewTimeline(event)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
+                    >
+                      <MdTimeline className="w-4 h-4" />
+                      타임라인
                     </button>
                   </div>
                 </div>
@@ -293,6 +310,31 @@ const EventList = ({ onSelectEvent, checklistType }) => {
                       <div className="text-xs text-gray-500">
                         {event.completedTasks} / {event.totalTasks} 완료
                       </div>
+                    </div>
+
+                    {/* 체크리스트 및 타임라인 버튼 */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => handleViewChecklist(event)}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
+                      >
+                        <MdChecklist className="w-4 h-4" />
+                        체크리스트
+                      </button>
+                      <button
+                        onClick={() => handleViewDayChecklist(event)}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
+                      >
+                        <MdChecklist className="w-4 h-4" />
+                        당일 체크리스트
+                      </button>
+                      <button
+                        onClick={() => handleViewTimeline(event)}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
+                      >
+                        <MdTimeline className="w-4 h-4" />
+                        타임라인
+                      </button>
                     </div>
                   </div>
                 </div>

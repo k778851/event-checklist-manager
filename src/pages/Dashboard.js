@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { MdEvent, MdChecklist, MdUpdate, MdTrendingUp, MdLock, MdLockOpen, MdSchedule, MdCheckCircle, MdExpandMore, MdExpandLess } from 'react-icons/md';
+import { MdEvent, MdChecklist, MdUpdate, MdTrendingUp, MdLock, MdLockOpen, MdSchedule, MdCheckCircle, MdExpandMore, MdExpandLess, MdAssignment, MdToday, MdTimeline } from 'react-icons/md';
+import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import sampleEvents from '../sampleEvents';
 
 const StatCard = ({ icon, title, value, color }) => (
   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -16,37 +18,66 @@ const StatCard = ({ icon, title, value, color }) => (
   </div>
 );
 
-const EventCard = ({ event }) => (
-  <div className="bg-white p-4 rounded-lg border border-gray-100 hover:shadow-md transition-shadow">
-    <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-2">
-        <h4 className="font-medium text-gray-800">{event.title}</h4>
+const EventCard = ({ event }) => {
+  const navigate = useNavigate();
+  const handleChecklist = (tab) => {
+    navigate(`/checklist/pre-event/${event.id}?tab=${tab}`);
+  };
+  return (
+    <div className="bg-white p-4 rounded-lg border border-gray-100 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <h4 className="font-medium text-gray-800">{event.title}</h4>
+          <span className={`px-2 py-1 rounded-full text-xs ${
+            event.category === '총회' ? 'bg-red-100 text-red-600' :
+            event.category === '지파' ? 'bg-sky-100 text-sky-600' :
+            event.category === '지역' ? 'bg-amber-100 text-amber-600' :
+            'bg-green-100 text-green-600'
+          }`}>
+            {event.category}
+          </span>
+        </div>
         <span className={`px-2 py-1 rounded-full text-xs ${
-          event.category === '총회' ? 'bg-red-100 text-red-600' :
-          event.category === '지파' ? 'bg-sky-100 text-sky-600' :
-          event.category === '지역' ? 'bg-amber-100 text-amber-600' :
-          'bg-green-100 text-green-600'
+          event.status === '진행중' ? 'bg-primary-50 text-primary-600' :
+          event.status === '예정' ? 'bg-warning-50 text-warning-600' :
+          'bg-success-50 text-success-600'
         }`}>
-          {event.category}
+          {event.status}
         </span>
       </div>
-      <span className={`px-2 py-1 rounded-full text-xs ${
-        event.status === '진행중' ? 'bg-primary-50 text-primary-600' :
-        event.status === '예정' ? 'bg-warning-50 text-warning-600' :
-        'bg-success-50 text-success-600'
-      }`}>
-        {event.status}
-      </span>
+      <div className="w-full bg-gray-100 rounded-full h-2">
+        <div 
+          className="bg-primary-500 h-2 rounded-full" 
+          style={{ width: `${event.progress}%` }}
+        />
+      </div>
+      <p className="mt-1 text-xs text-gray-500 text-right">{event.progress}% 완료</p>
+      <div className="flex gap-2 pt-3">
+        <button
+          onClick={() => handleChecklist('pre')}
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
+        >
+          <MdChecklist className="w-4 h-4" />
+          사전 체크리스트
+        </button>
+        <button
+          onClick={() => handleChecklist('day')}
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
+        >
+          <MdChecklist className="w-4 h-4" />
+          당일 체크리스트
+        </button>
+        <button
+          onClick={() => handleChecklist('timeline')}
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
+        >
+          <MdTimeline className="w-4 h-4" />
+          타임라인
+        </button>
+      </div>
     </div>
-    <div className="w-full bg-gray-100 rounded-full h-2">
-      <div 
-        className="bg-primary-500 h-2 rounded-full" 
-        style={{ width: `${event.progress}%` }}
-      />
-    </div>
-    <p className="mt-1 text-xs text-gray-500 text-right">{event.progress}% 완료</p>
-  </div>
-);
+  );
+};
 
 const RecentActivity = ({ activity }) => (
   <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
@@ -69,50 +100,7 @@ const Dashboard = () => {
   const monthEnd = dayjs(selectedMonth + '-01').endOf('month').format('YYYY.MM.DD');
 
   // 샘플 데이터 (모든 date를 monthStart ~ monthEnd로)
-  const events = [
-    {
-      title: "2024 신년 행사",
-      category: "총회",
-      status: "진행중",
-      date: `${monthStart} - ${monthEnd}`,
-      progress: 75
-    },
-    {
-      title: "봄 시즌 프로모션",
-      category: "지역",
-      status: "예정",
-      date: `${monthStart} - ${monthEnd}`,
-      progress: 30
-    },
-    {
-      title: "청년부 수련회",
-      category: "지파",
-      status: "진행중",
-      date: `${monthStart} - ${monthEnd}`,
-      progress: 45
-    },
-    {
-      title: "찬양팀 워크샵",
-      category: "부서",
-      status: "예정",
-      date: `${monthStart} - ${monthEnd}`,
-      progress: 15
-    },
-    {
-      title: "2023 성탄절 행사",
-      category: "총회",
-      status: "완료",
-      date: `${monthStart} - ${monthEnd}`,
-      progress: 100
-    },
-    {
-      title: "가을 수확감사절",
-      category: "지역",
-      status: "완료",
-      date: `${monthStart} - ${monthEnd}`,
-      progress: 100
-    }
-  ];
+  const events = sampleEvents;
 
   const recentActivities = [
     {
