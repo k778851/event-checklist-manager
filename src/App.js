@@ -5,7 +5,10 @@ import EventList from "./pages/EventList";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
+import ChecklistView from "./components/checklist/ChecklistView";
+import TimelineView from "./components/timeline/TimelineView";
 import './App.css';
+import ChecklistTabs from "./components/checklist/ChecklistTabs";
 
 function App() {
   return (
@@ -20,6 +23,8 @@ function App() {
             <Route path="/admin" element={<Admin />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/checklist/pre-event/:id" element={<ChecklistTabs />} />
+            <Route path="/timeline/:id" element={<TimelineView />} />
           </Routes>
         </main>
       </div>

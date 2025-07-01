@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   MdCheckCircle, 
   MdRadioButtonUnchecked,
@@ -13,7 +14,19 @@ import {
 } from 'react-icons/md';
 import * as XLSX from 'xlsx';
 
-const TimelineView = ({ event }) => {
+const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHeader = false, timelineData: propTimelineData }) => {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  // 샘플 행사 데이터 (Dashboard.js와 동일하게)
+  const events = [
+    { id: 1, title: "2024 신년 행사" },
+    { id: 2, title: "봄 시즌 프로모션" },
+    { id: 3, title: "청년부 수련회" },
+    { id: 4, title: "찬양팀 워크샵" },
+    { id: 5, title: "2023 성탄절 행사" },
+    { id: 6, title: "가을 수확감사절" }
+  ];
+  const event = propEvent || events.find(e => String(e.id) === String(id));
   const [timelineData, setTimelineData] = useState([
     {
       id: 1,
@@ -60,6 +73,7 @@ const TimelineView = ({ event }) => {
       checkedAt: null
     }
   ]);
+  const timelineDataToUse = propTimelineData || timelineData;
 
   const [filterStatus, setFilterStatus] = useState('all'); // all, completed, pending
   const [filterDepartment, setFilterDepartment] = useState('all');
@@ -73,9 +87,9 @@ const TimelineView = ({ event }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const departments = [...new Set(timelineData.map(item => item.department))];
+  const departments = [...new Set(timelineDataToUse.map(item => item.department))];
 
-  const filteredData = timelineData.filter(item => {
+  const filteredData = timelineDataToUse.filter(item => {
     const matchesStatus = filterStatus === 'all' || 
       (filterStatus === 'completed' && item.checked) ||
       (filterStatus === 'pending' && !item.checked);
@@ -177,7 +191,7 @@ const TimelineView = ({ event }) => {
   };
 
   const handleExcelDownload = (includeStatus = true) => {
-    const data = timelineData.map(item => ({
+    const data = timelineDataToUse.map(item => ({
       '시간': item.time,
       '부서': item.department,
       '항목': item.title,
@@ -195,12 +209,19 @@ const TimelineView = ({ event }) => {
     XLSX.writeFile(workbook, fileName);
   };
 
-  const completedCount = timelineData.filter(item => item.checked).length;
-  const totalCount = timelineData.length;
-  const overdueCount = timelineData.filter(item => !item.checked && isOverdue(item.time)).length;
+  const completedCount = timelineDataToUse.filter(item => item.checked).length;
+  const totalCount = timelineDataToUse.length;
+  const overdueCount = timelineDataToUse.filter(item => !item.checked && isOverdue(item.time)).length;
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 md:p-8 space-y-6">
+      {/* 상단 타이틀/헤더 (hideHeader가 false일 때만) */}
+      {!hideHeader && (
+        <div className="mb-6 flex items-center gap-4">
+          <button onClick={() => navigate('/events')} className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200 text-gray-700 text-sm font-medium">← 행사 목록으로 돌아가기</button>
+          <span className="text-lg font-semibold text-gray-800">{event ? event.title : '행사 정보 없음'}</span>
+        </div>
+      )}
       {/* 헤더 및 액션 버튼 */}
       <div className="flex justify-between items-center">
         <div>
@@ -320,82 +341,86 @@ const TimelineView = ({ event }) => {
       </div>
 
       {/* 타임라인 */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white rounded-lg">
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800">시간대별 체크리스트</h3>
         </div>
-        
         <div className="divide-y divide-gray-200">
-          {filteredData.map(item => (
-            <div 
-              key={item.id} 
-              className={`p-4 transition-colors ${
-                item.checked ? 'bg-gray-50' : 
-                isOverdue(item.time) ? 'bg-red-50' :
-                isUpcoming(item.time) ? 'bg-yellow-50' : 'hover:bg-gray-50'
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                {/* 시간 */}
-                <div className="flex-shrink-0 w-20">
-                  <div className="flex items-center gap-2">
-                    <MdAccessTime className="w-4 h-4 text-gray-500" />
-                    <span className="font-medium text-gray-800">{item.time}</span>
-                  </div>
-                </div>
-
-                {/* 체크 버튼 */}
-                <div className="flex-shrink-0">
-                  <button
-                    onClick={() => handleCheckItem(item.id)}
-                    className="flex items-center gap-2 hover:bg-white p-2 rounded-lg transition-colors"
-                  >
-                    {getStatusIcon(item.status, item.checked, item.time)}
-                  </button>
-                </div>
-
-                {/* 내용 */}
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-medium text-gray-800">{item.title}</h4>
-                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(item.status, item.checked, item.time)}`}>
-                          {item.checked ? '완료' : 
-                           isOverdue(item.time) ? '지연' :
-                           isUpcoming(item.time) ? '예정' : '미완료'}
-                        </span>
-                      </div>
-                      
-                      <p className="text-gray-600 text-sm mb-2">{item.content}</p>
-                      
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <MdBusiness className="w-3 h-3" />
-                          <span>{item.department}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MdPerson className="w-3 h-3" />
-                          <span>{item.assignee}</span>
-                        </div>
-                        {item.checkedAt && (
-                          <div className="flex items-center gap-1">
-                            <MdCheckCircle className="w-3 h-3" />
-                            <span>체크: {item.checkedAt}</span>
-                          </div>
-                        )}
-                      </div>
+          {[...Array(24)].map((_, hour) => {
+            // 2자리수 시간 문자열
+            const hourStr = hour.toString().padStart(2, '0') + ':00';
+            // 해당 시간대에 해당하는 항목 찾기 (분이 다를 수 있으니 hour만 비교)
+            const itemsAtHour = filteredData.filter(item => {
+              if (!item.time) return false;
+              const [h] = item.time.split(':');
+              return Number(h) === hour;
+            });
+            // 현재 시간대 하이라이트
+            const now = new Date();
+            const isCurrentHour = now.getHours() === hour;
+            return (
+              <div key={hour}
+                className={`p-4 transition-colors ${isCurrentHour ? 'border-4 border-blue-700 bg-blue-50 shadow-lg z-10 relative' : ''} ${itemsAtHour.length > 0 && itemsAtHour[0].checked ? 'bg-gray-50' : itemsAtHour.length > 0 && isOverdue(itemsAtHour[0].time) ? 'bg-red-50' : itemsAtHour.length > 0 && isUpcoming(itemsAtHour[0].time) ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}
+              >
+                <div className="flex items-start gap-4">
+                  {/* 시간 */}
+                  <div className="flex-shrink-0 w-20">
+                    <div className="flex items-center gap-2">
+                      <MdAccessTime className="w-4 h-4 text-gray-500" />
+                      <span className="font-medium text-gray-800">{hourStr}</span>
                     </div>
                   </div>
+                  {/* 체크/내용 */}
+                  {itemsAtHour.length > 0 ? (
+                    <>
+                      {/* 체크 버튼 */}
+                      <div className="flex-shrink-0">
+                        <button
+                          onClick={() => handleCheckItem(itemsAtHour[0].id)}
+                          className="flex items-center gap-2 hover:bg-white p-2 rounded-lg transition-colors"
+                        >
+                          {getStatusIcon(itemsAtHour[0].status, itemsAtHour[0].checked, itemsAtHour[0].time)}
+                        </button>
+                      </div>
+                      {/* 내용 */}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-medium text-gray-800">{itemsAtHour[0].title}</h4>
+                              <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(itemsAtHour[0].status, itemsAtHour[0].checked, itemsAtHour[0].time)}`}>
+                                {itemsAtHour[0].checked ? '완료' : 
+                                 isOverdue(itemsAtHour[0].time) ? '지연' :
+                                 isUpcoming(itemsAtHour[0].time) ? '예정' : '미완료'}
+                              </span>
+                            </div>
+                            <p className="text-gray-600 text-sm mb-2">{itemsAtHour[0].content}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <MdBusiness className="w-3 h-3" />
+                                <span>{itemsAtHour[0].department}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MdPerson className="w-3 h-3" />
+                                <span>{itemsAtHour[0].assignee}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 text-gray-300 italic">-</div>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* 알림 섹션 */}
-      {(overdueCount > 0 || timelineData.filter(item => isUpcoming(item.time) && !item.checked).length > 0) && (
+      {(overdueCount > 0 || timelineDataToUse.filter(item => isUpcoming(item.time) && !item.checked).length > 0) && (
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800">알림</h3>
@@ -412,7 +437,7 @@ const TimelineView = ({ event }) => {
               </div>
             )}
             
-            {timelineData.filter(item => isUpcoming(item.time) && !item.checked).map(item => (
+            {timelineDataToUse.filter(item => isUpcoming(item.time) && !item.checked).map(item => (
               <div key={item.id} className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <MdSchedule className="w-5 h-5 text-yellow-600 flex-shrink-0" />
                 <div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   MdAdd, 
   MdExpandMore, 
@@ -15,7 +16,28 @@ import {
 } from 'react-icons/md';
 import * as XLSX from 'xlsx';
 
-const ChecklistView = ({ event }) => {
+const ChecklistView = ({
+  event: propEvent,
+  hideHeader,
+  backButtonText = "← 행사 목록으로 돌아가기",
+  onBack,
+  titleSuffix = "",
+  titleTag = "span",
+  categoryFilter
+}) => {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  // 샘플 행사 데이터 (Dashboard.js와 동일하게)
+  const events = [
+    { id: 1, title: "2024 신년 행사" },
+    { id: 2, title: "봄 시즌 프로모션" },
+    { id: 3, title: "청년부 수련회" },
+    { id: 4, title: "찬양팀 워크샵" },
+    { id: 5, title: "2023 성탄절 행사" },
+    { id: 6, title: "가을 수확감사절" }
+  ];
+  // props로 받은 event가 있으면 그걸 사용, 없으면 기존 방식
+  const event = propEvent || events.find(e => String(e.id) === String(id));
   const [categories, setCategories] = useState([
     {
       id: 1,
@@ -94,7 +116,14 @@ const ChecklistView = ({ event }) => {
               ...category,
               items: category.items.map(item =>
                 item.id === itemId
-                  ? { ...item, status: newStatus }
+                  ? {
+                      ...item,
+                      status: newStatus,
+                      subItems: item.subItems.map(subItem => ({
+                        ...subItem,
+                        status: newStatus
+                      }))
+                    }
                   : item
               )
             }
@@ -109,18 +138,24 @@ const ChecklistView = ({ event }) => {
         category.id === categoryId
           ? {
               ...category,
-              items: category.items.map(item =>
-                item.id === itemId
-                  ? {
-                      ...item,
-                      subItems: item.subItems.map(subItem =>
-                        subItem.id === subItemId
-                          ? { ...subItem, status: newStatus }
-                          : subItem
-                      )
-                    }
-                  : item
-              )
+              items: category.items.map(item => {
+                if (item.id === itemId) {
+                  // 하위 항목 상태 변경
+                  const newSubItems = item.subItems.map(subItem =>
+                    subItem.id === subItemId
+                      ? { ...subItem, status: newStatus }
+                      : subItem
+                  );
+                  // 하위 항목이 모두 완료면 상위 항목도 완료, 아니면 미진행
+                  const allDone = newSubItems.length > 0 && newSubItems.every(subItem => subItem.status === '완료');
+                  return {
+                    ...item,
+                    subItems: newSubItems,
+                    status: allDone ? '완료' : '미진행',
+                  };
+                }
+                return item;
+              })
             }
           : category
       )
@@ -130,7 +165,6 @@ const ChecklistView = ({ event }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case '완료': return 'bg-green-100 text-green-600';
-      case '진행중': return 'bg-blue-100 text-blue-600';
       case '미진행': return 'bg-gray-100 text-gray-600';
       default: return 'bg-gray-100 text-gray-600';
     }
@@ -139,7 +173,6 @@ const ChecklistView = ({ event }) => {
   const getStatusIcon = (status) => {
     switch (status) {
       case '완료': return <MdCheckCircle className="w-5 h-5 text-green-600" />;
-      case '진행중': return <MdSchedule className="w-5 h-5 text-blue-600" />;
       case '미진행': return <MdRadioButtonUnchecked className="w-5 h-5 text-gray-400" />;
       default: return <MdRadioButtonUnchecked className="w-5 h-5 text-gray-400" />;
     }
@@ -171,6 +204,7 @@ const ChecklistView = ({ event }) => {
                 items: []
               };
             } else if (row['항목명'] && currentCategory) {
+              const isDay = row['구분'] === '당일';
               currentCategory.items.push({
                 id: Date.now() + index + 1000,
                 title: row['항목명'],
@@ -179,6 +213,7 @@ const ChecklistView = ({ event }) => {
                 assignee: row['담당자'] || '',
                 note: row['비고'] || '',
                 checkDate: null,
+                time: isDay ? row['시간'] || '' : undefined,
                 subItems: []
               });
             }
@@ -211,7 +246,8 @@ const ChecklistView = ({ event }) => {
           '상태': includeStatus ? item.status : '',
           '담당자': item.assignee,
           '비고': item.note,
-          '체크일': item.checkDate || ''
+          '체크일': item.checkDate || '',
+          '시간': item.type === '당일' ? (item.time || '') : ''
         });
       });
     });
@@ -224,8 +260,28 @@ const ChecklistView = ({ event }) => {
     XLSX.writeFile(workbook, fileName);
   };
 
+  const TitleTag = titleTag;
+
+  // 카테고리 필터링 적용
+  const filteredCategories = categoryFilter
+    ? categories.filter(category => category.name === categoryFilter)
+    : categories;
+
   return (
-    <div className="space-y-6">
+    <div className="p-6 md:p-8">
+      {!hideHeader && (
+        <div className="mb-6 flex items-center gap-4">
+          <button
+            onClick={onBack ? onBack : () => navigate('/events')}
+            className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200 text-gray-700 text-sm font-medium"
+          >
+            {backButtonText}
+          </button>
+          <TitleTag className="text-2xl font-bold text-gray-800">
+            {event ? event.title : '행사 정보 없음'}{titleSuffix}
+          </TitleTag>
+        </div>
+      )}
       {/* 헤더 및 액션 버튼 */}
       <div className="flex justify-between items-center">
         <div>
@@ -264,7 +320,7 @@ const ChecklistView = ({ event }) => {
 
       {/* 체크리스트 카테고리 */}
       <div className="space-y-4">
-        {categories.map(category => (
+        {filteredCategories.map(category => (
           <div key={category.id} className="bg-white rounded-lg border border-gray-200">
             <div
               className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
@@ -291,8 +347,7 @@ const ChecklistView = ({ event }) => {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => updateItemStatus(category.id, item.id, 
-                            item.status === '완료' ? '미진행' : 
-                            item.status === '미진행' ? '진행중' : '완료'
+                            item.status === '완료' ? '미진행' : '완료'
                           )}
                           className="flex items-center gap-2 hover:bg-gray-50 p-2 rounded-lg transition-colors"
                         >
@@ -307,6 +362,17 @@ const ChecklistView = ({ event }) => {
                         }`}>
                           {item.type}
                         </span>
+                        {/* 하위 항목 진행률 표시 */}
+                        {item.subItems && item.subItems.length > 0 && (
+                          (() => {
+                            const total = item.subItems.length;
+                            const done = item.subItems.filter(sub => sub.status === '완료').length;
+                            const percent = Math.round((done / total) * 100);
+                            return (
+                              <span className="ml-2 text-xs text-gray-500">{done}/{total} 완료 ({percent}%)</span>
+                            );
+                          })()
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -334,12 +400,6 @@ const ChecklistView = ({ event }) => {
                             <span>{item.note}</span>
                           </div>
                         )}
-                        {item.checkDate && (
-                          <div className="flex items-center gap-1">
-                            <MdSchedule className="w-4 h-4" />
-                            <span>{item.checkDate}</span>
-                          </div>
-                        )}
                       </div>
 
                       {/* 하위 항목들 */}
@@ -349,8 +409,7 @@ const ChecklistView = ({ event }) => {
                             <div key={subItem.id} className="flex items-center gap-3">
                               <button
                                 onClick={() => updateSubItemStatus(category.id, item.id, subItem.id,
-                                  subItem.status === '완료' ? '미진행' : 
-                                  subItem.status === '미진행' ? '진행중' : '완료'
+                                  subItem.status === '완료' ? '미진행' : '완료'
                                 )}
                                 className="flex items-center gap-2 hover:bg-gray-50 p-1 rounded transition-colors"
                               >
@@ -374,11 +433,11 @@ const ChecklistView = ({ event }) => {
         ))}
       </div>
 
-      {/* 통계 정보 */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
+      {/* 진행 현황 */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200 mt-10">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">진행 현황</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {categories.map(category => {
+          {filteredCategories.map(category => {
             const totalItems = category.items.length;
             const completedItems = category.items.filter(item => item.status === '완료').length;
             const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
