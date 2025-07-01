@@ -4,8 +4,9 @@ import EventCreateModal from '../components/events/EventCreateModal';
 import EventEditModal from '../components/events/EventEditModal';
 import ChecklistTabs from '../components/checklist/ChecklistTabs';
 import TimelineView from '../components/timeline/TimelineView';
-import sampleEvents from '../sampleEvents';
 import { useNavigate } from 'react-router-dom';
+import { useEvents } from '../contexts/EventContext';
+import dayjs from 'dayjs';
 
 // 고정된 부서 목록
 const DEPARTMENTS = [
@@ -28,14 +29,26 @@ const EventList = ({ onSelectEvent, checklistType }) => {
   const [checklistTab, setChecklistTab] = useState('pre');
   const navigate = useNavigate();
 
-  // 실제 상태로 관리되는 행사 데이터
-  const [events, setEvents] = useState(sampleEvents);
+  // EventContext에서 행사 데이터 가져오기
+  const { events, addEvent, updateEvent, getEventsByMonth, getEventsByYear } = useEvents();
+  
+  // 월 선택 상태
+  const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
+  const currentYear = dayjs().format('YYYY');
 
-  // 진행중인 행사 갯수 계산
-  const ongoingEventsCount = events.filter(event => event.status === "진행중").length;
+  // 월별 행사 필터링
+  let monthEvents = [];
+  if (selectedMonth === 'all') {
+    monthEvents = getEventsByYear(currentYear);
+  } else {
+    monthEvents = getEventsByMonth(selectedMonth);
+  }
+
+  // 진행중인 행사 갯수 계산 (월별)
+  const ongoingEventsCount = monthEvents.filter(event => event.status === "진행중").length;
 
   // 검색 및 필터링된 행사 목록
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = monthEvents.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || 
       (filterType === 'ongoing' && event.status === '진행중') ||
@@ -51,28 +64,12 @@ const EventList = ({ onSelectEvent, checklistType }) => {
   const completedEvents = filteredEvents.filter(event => event.status === '완료');
 
   const handleCreateEvent = (eventData) => {
-    const newEvent = {
-      id: Date.now(),
-      ...eventData,
-      status: "진행중",
-      progress: 0,
-      totalTasks: 0,
-      completedTasks: 0
-    };
-    
-    setEvents(prevEvents => [...prevEvents, newEvent]);
+    addEvent(eventData);
     setIsCreateModalOpen(false);
   };
 
   const handleEditEvent = (eventData) => {
-    setEvents(prevEvents => 
-      prevEvents.map(event => 
-        event.id === selectedEvent.id 
-          ? { ...event, ...eventData }
-          : event
-      )
-    );
-    
+    updateEvent(selectedEvent.id, eventData);
     setIsEditModalOpen(false);
     setSelectedEvent(null);
   };
@@ -105,6 +102,23 @@ const EventList = ({ onSelectEvent, checklistType }) => {
     setSelectedEventForDetail(null);
   };
 
+  // 월 이동 함수
+  const handlePrevMonth = () => {
+    setSelectedMonth(dayjs(selectedMonth + '-01').subtract(1, 'month').format('YYYY-MM'));
+  };
+  
+  const handleNextMonth = () => {
+    setSelectedMonth(dayjs(selectedMonth + '-01').add(1, 'month').format('YYYY-MM'));
+  };
+
+  const handleAllYear = () => {
+    setSelectedMonth('all');
+  };
+
+  const handleMonthView = () => {
+    setSelectedMonth(dayjs().format('YYYY-MM'));
+  };
+
   // 체크리스트 또는 타임라인 뷰일 때
   if (currentView === 'checklist' && selectedEventForDetail) {
     return (
@@ -133,6 +147,46 @@ const EventList = ({ onSelectEvent, checklistType }) => {
           <MdAdd className="w-5 h-5" />
           새 행사 등록
         </button>
+      </div>
+
+      {/* 월 선택 화살표 네비게이션 */}
+      <div className="mb-4 flex items-center gap-4">
+        <button
+          className="p-2 rounded-full hover:bg-gray-100 text-xl"
+          onClick={handlePrevMonth}
+          aria-label="이전 달"
+          disabled={selectedMonth === 'all'}
+        >
+          ◀
+        </button>
+        <span className="font-semibold text-lg text-gray-800 min-w-[120px] text-center">
+          {selectedMonth === 'all'
+            ? `${currentYear}년 전체`
+            : dayjs(selectedMonth + '-01').format('YYYY년 MM월')}
+        </span>
+        <button
+          className="p-2 rounded-full hover:bg-gray-100 text-xl"
+          onClick={handleNextMonth}
+          aria-label="다음 달"
+          disabled={selectedMonth === 'all'}
+        >
+          ▶
+        </button>
+        {selectedMonth !== 'all' ? (
+          <button
+            className={`ml-2 px-3 py-1 rounded border ${selectedMonth === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-primary-600 border-primary-600'}`}
+            onClick={handleAllYear}
+          >
+            올해 전체
+          </button>
+        ) : (
+          <button
+            className="ml-2 px-3 py-1 rounded border bg-white text-primary-600 border-primary-600"
+            onClick={handleMonthView}
+          >
+            월별 보기
+          </button>
+        )}
       </div>
 
       {/* 검색 및 필터 */}
@@ -247,160 +301,171 @@ const EventList = ({ onSelectEvent, checklistType }) => {
                 </div>
               </div>
             ))}
+            {ongoingEvents.length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                진행중인 행사가 없습니다.
+              </div>
+            )}
           </div>
         </div>
 
         {/* 예정된 행사 */}
-        {scheduledEvents.length > 0 && (
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              예정된 행사 ({scheduledEvents.length})
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {scheduledEvents.map(event => (
-                <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
-                  onClick={() => onSelectEvent && onSelectEvent(event)}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-gray-800">{event.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        event.category === '총회' ? 'bg-red-100 text-red-600' :
-                        event.category === '지파' ? 'bg-sky-100 text-sky-600' :
-                        event.category === '지역' ? 'bg-amber-100 text-amber-600' :
-                        'bg-green-100 text-green-600'
-                      }`}>
-                        {event.category}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={e => { e.stopPropagation(); handleEditClick(event); }}
-                        className="p-1.5 rounded-full text-primary-600 hover:bg-primary-50 transition-colors"
-                        title="행사 정보 수정"
-                      >
-                        <MdEdit className="w-5 h-5" />
-                      </button>
-                      <span className="px-2 py-1 rounded-full text-xs bg-warning-50 text-warning-600">
-                        {event.status}
-                      </span>
-                    </div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            예정된 행사 ({scheduledEvents.length})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {scheduledEvents.map(event => (
+              <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                onClick={() => onSelectEvent && onSelectEvent(event)}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-gray-800">{event.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      event.category === '총회' ? 'bg-red-100 text-red-600' :
+                      event.category === '지파' ? 'bg-sky-100 text-sky-600' :
+                      event.category === '지역' ? 'bg-amber-100 text-amber-600' :
+                      'bg-green-100 text-green-600'
+                    }`}>
+                      {event.category}
+                    </span>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                      {event.departments.map(dept => (
-                        <span key={dept} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                          {dept}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">진행률</span>
-                        <span className="font-medium">{event.progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-warning-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${event.progress}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {event.completedTasks} / {event.totalTasks} 완료
-                      </div>
-                    </div>
-
-                    {/* 체크리스트 및 타임라인 버튼 */}
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        onClick={() => handleViewChecklist(event)}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
-                      >
-                        <MdChecklist className="w-4 h-4" />
-                        체크리스트
-                      </button>
-                      <button
-                        onClick={() => handleViewDayChecklist(event)}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
-                      >
-                        <MdChecklist className="w-4 h-4" />
-                        당일 체크리스트
-                      </button>
-                      <button
-                        onClick={() => handleViewTimeline(event)}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
-                      >
-                        <MdTimeline className="w-4 h-4" />
-                        타임라인
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 완료된 행사 */}
-        {completedEvents.length > 0 && (
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              완료된 행사 ({completedEvents.length})
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {completedEvents.map(event => (
-                <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 opacity-75 cursor-pointer hover:shadow-md transition"
-                  onClick={() => onSelectEvent && onSelectEvent(event)}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-gray-800">{event.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        event.category === '총회' ? 'bg-red-100 text-red-600' :
-                        event.category === '지파' ? 'bg-sky-100 text-sky-600' :
-                        event.category === '지역' ? 'bg-amber-100 text-amber-600' :
-                        'bg-green-100 text-green-600'
-                      }`}>
-                        {event.category}
-                      </span>
-                    </div>
-                    <span className="px-2 py-1 rounded-full text-xs bg-success-50 text-success-600">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={e => { e.stopPropagation(); handleEditClick(event); }}
+                      className="p-1.5 rounded-full text-primary-600 hover:bg-primary-50 transition-colors"
+                      title="행사 정보 수정"
+                    >
+                      <MdEdit className="w-5 h-5" />
+                    </button>
+                    <span className="px-2 py-1 rounded-full text-xs bg-warning-50 text-warning-600">
                       {event.status}
                     </span>
                   </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {event.departments.map(dept => (
+                      <span key={dept} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                        {dept}
+                      </span>
+                    ))}
+                  </div>
                   
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                      {event.departments.map(dept => (
-                        <span key={dept} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                          {dept}
-                        </span>
-                      ))}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">진행률</span>
+                      <span className="font-medium">{event.progress}%</span>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">진행률</span>
-                        <span className="font-medium">{event.progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-success-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${event.progress}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {event.completedTasks} / {event.totalTasks} 완료
-                      </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-warning-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${event.progress}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {event.completedTasks} / {event.totalTasks} 완료
+                    </div>
+                  </div>
+
+                  {/* 체크리스트 및 타임라인 버튼 */}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={() => handleViewChecklist(event)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
+                    >
+                      <MdChecklist className="w-4 h-4" />
+                      사전 체크리스트
+                    </button>
+                    <button
+                      onClick={() => handleViewDayChecklist(event)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
+                    >
+                      <MdChecklist className="w-4 h-4" />
+                      당일 체크리스트
+                    </button>
+                    <button
+                      onClick={() => handleViewTimeline(event)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
+                    >
+                      <MdTimeline className="w-4 h-4" />
+                      타임라인
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {scheduledEvents.length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                예정된 행사가 없습니다.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 완료된 행사 */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            완료된 행사 ({completedEvents.length})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {completedEvents.map(event => (
+              <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 opacity-75 cursor-pointer hover:shadow-md transition"
+                onClick={() => onSelectEvent && onSelectEvent(event)}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-gray-800">{event.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      event.category === '총회' ? 'bg-red-100 text-red-600' :
+                      event.category === '지파' ? 'bg-sky-100 text-sky-600' :
+                      event.category === '지역' ? 'bg-amber-100 text-amber-600' :
+                      'bg-green-100 text-green-600'
+                    }`}>
+                      {event.category}
+                    </span>
+                  </div>
+                  <span className="px-2 py-1 rounded-full text-xs bg-success-50 text-success-600">
+                    {event.status}
+                  </span>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {event.departments.map(dept => (
+                      <span key={dept} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                        {dept}
+                      </span>
+                    ))}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">진행률</span>
+                      <span className="font-medium">{event.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-success-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${event.progress}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {event.completedTasks} / {event.totalTasks} 완료
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+            {completedEvents.length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                완료된 행사가 없습니다.
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* 모달들 */}
@@ -408,7 +473,7 @@ const EventList = ({ onSelectEvent, checklistType }) => {
         <EventCreateModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onCreate={handleCreateEvent}
+          onSubmit={handleCreateEvent}
           departments={DEPARTMENTS}
         />
       )}
@@ -417,7 +482,7 @@ const EventList = ({ onSelectEvent, checklistType }) => {
         <EventEditModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onEdit={handleEditEvent}
+          onSubmit={handleEditEvent}
           event={selectedEvent}
           departments={DEPARTMENTS}
         />
