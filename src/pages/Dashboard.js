@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MdEvent, MdChecklist, MdUpdate, MdTrendingUp, MdLock, MdLockOpen, MdSchedule, MdCheckCircle, MdExpandMore, MdExpandLess, MdAssignment, MdToday, MdTimeline } from 'react-icons/md';
 import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import sampleEvents from '../sampleEvents';
+import { useEvents } from '../contexts/EventContext';
 
 const StatCard = ({ icon, title, value, color }) => (
   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -21,7 +21,11 @@ const StatCard = ({ icon, title, value, color }) => (
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
   const handleChecklist = (tab) => {
-    navigate(`/checklist/pre-event/${event.id}?tab=${tab}`);
+    if (tab === 'timeline') {
+      navigate(`/timeline/${event.id}`);
+    } else {
+      navigate(`/checklist/pre-event/${event.id}?tab=${tab}`);
+    }
   };
   return (
     <div className="bg-white p-4 rounded-lg border border-gray-100 hover:shadow-md transition-shadow">
@@ -92,15 +96,16 @@ const RecentActivity = ({ activity }) => (
 );
 
 const Dashboard = () => {
+  // EventContext에서 행사 데이터 가져오기
+  const { events, getEventsByMonth, getEventsByYear } = useEvents();
+  
   // 월 선택 상태를 가장 먼저 선언
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
+  const currentYear = dayjs().format('YYYY');
 
   // 이번 달 시작일과 종료일 계산
   const monthStart = dayjs(selectedMonth + '-01').startOf('month').format('YYYY.MM.DD');
   const monthEnd = dayjs(selectedMonth + '-01').endOf('month').format('YYYY.MM.DD');
-
-  // 샘플 데이터 (모든 date를 monthStart ~ monthEnd로)
-  const events = sampleEvents;
 
   const recentActivities = [
     {
@@ -115,32 +120,6 @@ const Dashboard = () => {
     }
   ];
 
-  // 샘플 카드 데이터 (이번 달, 실제 데이터 없을 때만)
-  const sampleOngoing = [
-    {
-      title: '샘플 행사',
-      category: '총회',
-      status: '진행중',
-      progress: 60
-    }
-  ];
-  const sampleScheduled = [
-    {
-      title: '샘플 예정 행사',
-      category: '지역',
-      status: '예정',
-      progress: 0
-    }
-  ];
-  const sampleCompleted = [
-    {
-      title: '샘플 완료 행사',
-      category: '지파',
-      status: '완료',
-      progress: 100
-    }
-  ];
-
   // 월 이동 함수
   const handlePrevMonth = () => {
     setSelectedMonth(dayjs(selectedMonth + '-01').subtract(1, 'month').format('YYYY-MM'));
@@ -148,18 +127,21 @@ const Dashboard = () => {
   const handleNextMonth = () => {
     setSelectedMonth(dayjs(selectedMonth + '-01').add(1, 'month').format('YYYY-MM'));
   };
-
-  // 행사 월별 필터링 함수
-  const filterByMonth = (event) => {
-    if (!event.date) return false;
-    const [start, end] = event.date.split(' - ');
-    const startMonth = dayjs(start.replace(/\./g, '-')).format('YYYY-MM');
-    const endMonth = dayjs(end.replace(/\./g, '-')).format('YYYY-MM');
-    return selectedMonth >= startMonth && selectedMonth <= endMonth;
+  const handleAllYear = () => {
+    setSelectedMonth('all');
   };
 
-  // 월별 행사 리스트
-  const filteredEvents = events.filter(filterByMonth);
+  const handleMonthView = () => {
+    setSelectedMonth(dayjs().format('YYYY-MM'));
+  };
+
+  // 행사 필터링
+  let filteredEvents = [];
+  if (selectedMonth === 'all') {
+    filteredEvents = getEventsByYear(currentYear);
+  } else {
+    filteredEvents = getEventsByMonth(selectedMonth);
+  }
   const ongoingEvents = filteredEvents.filter(event => event.status === "진행중");
   const scheduledEvents = filteredEvents.filter(event => event.status === "예정");
   const completedEvents = filteredEvents.filter(event => event.status === "완료");
@@ -204,19 +186,38 @@ const Dashboard = () => {
           className="p-2 rounded-full hover:bg-gray-100 text-xl"
           onClick={handlePrevMonth}
           aria-label="이전 달"
+          disabled={selectedMonth === 'all'}
         >
           ◀
         </button>
         <span className="font-semibold text-lg text-gray-800 min-w-[120px] text-center">
-          {dayjs(selectedMonth + '-01').format('YYYY년 MM월')}
+          {selectedMonth === 'all'
+            ? `${currentYear}년 전체`
+            : dayjs(selectedMonth + '-01').format('YYYY년 MM월')}
         </span>
         <button
           className="p-2 rounded-full hover:bg-gray-100 text-xl"
           onClick={handleNextMonth}
           aria-label="다음 달"
+          disabled={selectedMonth === 'all'}
         >
           ▶
         </button>
+        {selectedMonth !== 'all' ? (
+          <button
+            className={`ml-2 px-3 py-1 rounded border ${selectedMonth === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-primary-600 border-primary-600'}`}
+            onClick={handleAllYear}
+          >
+            올해 전체
+          </button>
+        ) : (
+          <button
+            className="ml-2 px-3 py-1 rounded border bg-white text-primary-600 border-primary-600"
+            onClick={handleMonthView}
+          >
+            월별 보기
+          </button>
+        )}
       </div>
 
       {/* 통계 카드 */}
@@ -248,7 +249,7 @@ const Dashboard = () => {
                 {ongoingEvents.map((event, index) => (
                   <EventCard key={index} event={event} />
                 ))}
-                {ongoingEvents.length === 0 && isCurrentMonth && (
+                {ongoingEvents.length === 0 && (
                   <div className="col-span-full text-center py-8 text-gray-500">
                     진행중인 행사가 없습니다.
                   </div>
@@ -275,7 +276,7 @@ const Dashboard = () => {
                 {scheduledEvents.map((event, index) => (
                   <EventCard key={index} event={event} />
                 ))}
-                {scheduledEvents.length === 0 && isCurrentMonth && (
+                {scheduledEvents.length === 0 && (
                   <div className="col-span-full text-center py-8 text-gray-500">
                     예정된 행사가 없습니다.
                   </div>
@@ -302,7 +303,7 @@ const Dashboard = () => {
                 {completedEvents.map((event, index) => (
                   <EventCard key={index} event={event} />
                 ))}
-                {completedEvents.length === 0 && isCurrentMonth && (
+                {completedEvents.length === 0 && (
                   <div className="col-span-full text-center py-8 text-gray-500">
                     완료된 행사가 없습니다.
                   </div>
