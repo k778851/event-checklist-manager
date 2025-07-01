@@ -3,6 +3,7 @@ import { MdAdd, MdFilterList, MdSearch, MdEdit } from 'react-icons/md';
 import EventCreateModal from '../components/events/EventCreateModal';
 import EventEditModal from '../components/events/EventEditModal';
 import { useNavigate } from 'react-router-dom';
+import { useEvents } from '../contexts/EventContext';
 
 // 고정된 부서 목록
 const DEPARTMENTS = [
@@ -22,42 +23,8 @@ const EventManagement = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const navigate = useNavigate();
 
-  // 실제 상태로 관리되는 행사 데이터
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: "2024 신년 행사",
-      category: "총회",
-      status: "진행중",
-      date: "2024-01-15", // 내부적으로만 저장
-      departments: ["기획부", "홍보부", "전도부"],
-      progress: 75,
-      totalTasks: 48,
-      completedTasks: 36
-    },
-    {
-      id: 2,
-      title: "봄 시즌 프로모션",
-      category: "지역",
-      status: "예정",
-      date: "2024-03-01", // 내부적으로만 저장
-      departments: ["홍보부", "문화부"],
-      progress: 30,
-      totalTasks: 24,
-      completedTasks: 8
-    },
-    {
-      id: 3,
-      title: "청년부 수련회",
-      category: "지파",
-      status: "완료",
-      date: "2024-02-01", // 내부적으로만 저장
-      departments: ["기획부", "청년회"],
-      progress: 100,
-      totalTasks: 36,
-      completedTasks: 36
-    }
-  ]);
+  // EventContext에서 행사 데이터 가져오기
+  const { events, addEvent, updateEvent } = useEvents();
 
   // 진행중인 행사 갯수 계산
   const ongoingEventsCount = events.filter(event => event.status === "진행중").length;
@@ -79,29 +46,13 @@ const EventManagement = () => {
   const completedEvents = filteredEvents.filter(event => event.status === '완료');
 
   const handleCreateEvent = (eventData) => {
-    const newEvent = {
-      id: Date.now(), // 임시 ID 생성
-      ...eventData,
-      status: "진행중", // 기본 상태를 '진행중'으로 설정
-      progress: 0,
-      totalTasks: 0,
-      completedTasks: 0
-    };
-    
-    setEvents(prevEvents => [...prevEvents, newEvent]);
+    addEvent(eventData);
     setIsCreateModalOpen(false);
-    console.log('새 행사 생성:', newEvent);
+    console.log('새 행사 생성:', eventData);
   };
 
   const handleEditEvent = (eventData) => {
-    setEvents(prevEvents => 
-      prevEvents.map(event => 
-        event.id === selectedEvent.id 
-          ? { ...event, ...eventData }
-          : event
-      )
-    );
-    
+    updateEvent(selectedEvent.id, eventData);
     setIsEditModalOpen(false);
     setSelectedEvent(null);
     console.log('행사 수정:', eventData);
@@ -226,16 +177,22 @@ const EventManagement = () => {
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button
-                    onClick={() => navigate(`/checklist/${event.id}`)}
+                    onClick={() => navigate(`/checklist/pre-event/${event.id}?tab=pre`)}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
                   >
-                    체크리스트
+                    사전 체크리스트
+                  </button>
+                  <button
+                    onClick={() => navigate(`/checklist/pre-event/${event.id}?tab=day`)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
+                  >
+                    당일 체크리스트
                   </button>
                   <button
                     onClick={() => navigate(`/timeline/${event.id}`)}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
                   >
-                    당일 체크리스트
+                    타임라인
                   </button>
                 </div>
               </div>
@@ -315,16 +272,22 @@ const EventManagement = () => {
                   </div>
                   <div className="flex gap-2 pt-2">
                     <button
-                      onClick={() => navigate(`/checklist/${event.id}`)}
+                      onClick={() => navigate(`/checklist/pre-event/${event.id}?tab=pre`)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
                     >
-                      체크리스트
+                      사전 체크리스트
+                    </button>
+                    <button
+                      onClick={() => navigate(`/checklist/pre-event/${event.id}?tab=day`)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
+                    >
+                      당일 체크리스트
                     </button>
                     <button
                       onClick={() => navigate(`/timeline/${event.id}`)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
                     >
-                      당일 체크리스트
+                      타임라인
                     </button>
                   </div>
                 </div>
@@ -405,16 +368,22 @@ const EventManagement = () => {
                   </div>
                   <div className="flex gap-2 pt-2">
                     <button
-                      onClick={() => navigate(`/checklist/${event.id}`)}
+                      onClick={() => navigate(`/checklist/pre-event/${event.id}?tab=pre`)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
                     >
-                      체크리스트
+                      사전 체크리스트
+                    </button>
+                    <button
+                      onClick={() => navigate(`/checklist/pre-event/${event.id}?tab=day`)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
+                    >
+                      당일 체크리스트
                     </button>
                     <button
                       onClick={() => navigate(`/timeline/${event.id}`)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
                     >
-                      당일 체크리스트
+                      타임라인
                     </button>
                   </div>
                 </div>
