@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  MdAdd, 
-  MdExpandMore, 
-  MdExpandLess, 
-  MdEdit, 
-  MdDelete, 
-  MdCheckCircle, 
+import {
+  MdAdd,
+  MdExpandMore,
+  MdExpandLess,
+  MdEdit,
+  MdDelete,
+  MdCheckCircle,
   MdRadioButtonUnchecked,
   MdSchedule,
   MdUpload,
@@ -38,6 +38,7 @@ const ChecklistView = ({
   ];
   // props로 받은 event가 있으면 그걸 사용, 없으면 기존 방식
   const event = propEvent || events.find(e => String(e.id) === String(id));
+
   const [categories, setCategories] = useState([
     {
       id: 1,
@@ -93,10 +94,17 @@ const ChecklistView = ({
   ]);
 
   const [expandedCategories, setExpandedCategories] = useState(new Set([1, 2]));
-  const [editingItem, setEditingItem] = useState(null);
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', assignee: '', note: '' });
+  const editInputRef = useRef();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+
+  // 카테고리 필터링 적용
+  const filteredCategories = categoryFilter
+    ? categories.filter(category => category.name === categoryFilter)
+    : categories;
 
   const toggleCategory = (categoryId) => {
     const newExpanded = new Set(expandedCategories);
@@ -260,12 +268,49 @@ const ChecklistView = ({
     XLSX.writeFile(workbook, fileName);
   };
 
-  const TitleTag = titleTag;
+  // 항목 수정 시작
+  const handleEditStart = (categoryId, item) => {
+    setEditingItemId(item.id);
+    setEditForm({ title: item.title, assignee: item.assignee, note: item.note });
+    setTimeout(() => { if (editInputRef.current) editInputRef.current.focus(); }, 100);
+  };
 
-  // 카테고리 필터링 적용
-  const filteredCategories = categoryFilter
-    ? categories.filter(category => category.name === categoryFilter)
-    : categories;
+  // 항목 수정 저장
+  const handleEditSave = (categoryId, itemId) => {
+    setCategories(prevCategories =>
+      prevCategories.map(category =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map(item =>
+                item.id === itemId
+                  ? { ...item, ...editForm }
+                  : item
+              )
+            }
+          : category
+      )
+    );
+    setEditingItemId(null);
+  };
+
+  // 항목 삭제
+  const handleDeleteItem = (categoryId, itemId) => {
+    if (window.confirm('정말 삭제하시겠습니까?')) {
+      setCategories(prevCategories =>
+        prevCategories.map(category =>
+          category.id === categoryId
+            ? {
+                ...category,
+                items: category.items.filter(item => item.id !== itemId)
+              }
+            : category
+        )
+      );
+    }
+  };
+
+  const TitleTag = titleTag;
 
   return (
     <div className="p-6 md:p-8">
@@ -352,7 +397,17 @@ const ChecklistView = ({
                           className="flex items-center gap-2 hover:bg-gray-50 p-2 rounded-lg transition-colors"
                         >
                           {getStatusIcon(item.status)}
-                          <span className="font-medium text-gray-800">{item.title}</span>
+                          {editingItemId === item.id ? (
+                            <input
+                              ref={editInputRef}
+                              className="border-b border-primary-300 outline-none px-1 text-gray-800 font-medium bg-gray-50"
+                              value={editForm.title}
+                              onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                              onKeyDown={e => { if (e.key === 'Enter') handleEditSave(category.id, item.id); }}
+                            />
+                          ) : (
+                            <span className="font-medium text-gray-800">{item.title}</span>
+                          )}
                         </button>
                         <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(item.status)}`}>
                           {item.status}
@@ -375,15 +430,27 @@ const ChecklistView = ({
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setShowEditModal(true);
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                        >
-                          <MdEdit className="w-4 h-4" />
-                        </button>
+                        {editingItemId === item.id ? (
+                          <>
+                            <button onClick={() => handleEditSave(category.id, item.id)} className="text-green-600 px-2">저장</button>
+                            <button onClick={() => setEditingItemId(null)} className="text-gray-400 px-2">취소</button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleEditStart(category.id, item)}
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                              <MdEdit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(category.id, item.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                              <MdDelete className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -392,9 +459,26 @@ const ChecklistView = ({
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                           <MdPerson className="w-4 h-4" />
-                          <span>{item.assignee || '담당자 미지정'}</span>
+                          {editingItemId === item.id ? (
+                            <input
+                              className="border-b border-primary-200 outline-none px-1 bg-gray-50"
+                              value={editForm.assignee}
+                              onChange={e => setEditForm(f => ({ ...f, assignee: e.target.value }))}
+                            />
+                          ) : (
+                            <span>{item.assignee || '담당자 미지정'}</span>
+                          )}
                         </div>
-                        {item.note && (
+                        {editingItemId === item.id ? (
+                          <div className="flex items-center gap-1">
+                            <MdNote className="w-4 h-4" />
+                            <input
+                              className="border-b border-primary-200 outline-none px-1 bg-gray-50"
+                              value={editForm.note}
+                              onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))}
+                            />
+                          </div>
+                        ) : item.note && (
                           <div className="flex items-center gap-1">
                             <MdNote className="w-4 h-4" />
                             <span>{item.note}</span>

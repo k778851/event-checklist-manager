@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { 
   MdDashboard,
   MdEvent, 
+  MdChecklist, 
+  MdTimeline,
   MdPeople,
   MdSettings,
   MdHelp,
@@ -15,6 +17,8 @@ export default function Sidebar() {
   const menuItems = [
     { path: "/", icon: <MdDashboard className="w-5 h-5" />, label: "대시보드" },
     { path: "/events", icon: <MdEvent className="w-5 h-5" />, label: "행사 관리" },
+    { path: "/checklist", icon: <MdChecklist className="w-5 h-5" />, label: "체크리스트" },
+    { path: "/timeline", icon: <MdTimeline className="w-5 h-5" />, label: "타임라인" },
     { path: "/admin", icon: <MdPeople className="w-5 h-5" />, label: "사용자 관리" },
     { path: "/settings", icon: <MdSettings className="w-5 h-5" />, label: "시스템 설정" },
     { path: "/help", icon: <MdHelp className="w-5 h-5" />, label: "도움말" },
@@ -30,7 +34,8 @@ export default function Sidebar() {
     if (item.path === "/events") {
       return (
         location.pathname === "/events" ||
-        location.pathname.startsWith("/checklist/pre-event/")
+        location.pathname.startsWith("/checklist/pre-event/") ||
+        location.pathname.startsWith("/checklist/")
       );
     }
     return location.pathname === item.path;

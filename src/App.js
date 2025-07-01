@@ -2,6 +2,8 @@ import Sidebar from "./components/layout/Sidebar";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import EventList from "./pages/EventList";
+import ChecklistPage from "./pages/ChecklistPage";
+import TimelinePage from "./pages/TimelinePage";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
@@ -20,6 +22,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/events" element={<EventList />} />
+            <Route path="/checklist/*" element={<ChecklistPage />} />
+            <Route path="/timeline/*" element={<TimelinePage />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/help" element={<Help />} />
