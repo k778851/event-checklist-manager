@@ -17,7 +17,7 @@ const ChecklistPage = () => {
         <EventList onSelectEvent={handleSelectEvent} checklistType="pre" />
       ) : (
         <div>
-          <button onClick={() => setSelectedEvent(null)} className="text-primary-600 hover:text-primary-700 font-medium mb-4">← 행사 목록으로 돌아가기</button>
+          <button onClick={() => window.history.back()} className="text-primary-600 hover:text-primary-700 font-medium mb-4">← 이전 화면으로 돌아가기</button>
           <h1 className="text-2xl font-bold text-gray-800 mb-6">{selectedEvent.title}</h1>
           <ChecklistView event={selectedEvent} checklistType="pre" />
         </div>

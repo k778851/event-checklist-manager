@@ -4,6 +4,7 @@ import EventCreateModal from '../components/events/EventCreateModal';
 import EventEditModal from '../components/events/EventEditModal';
 import { useNavigate } from 'react-router-dom';
 import { useEvents } from '../contexts/EventContext';
+import dayjs from 'dayjs';
 
 // 고정된 부서 목록
 const DEPARTMENTS = [
@@ -23,14 +24,29 @@ const EventManagement = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const navigate = useNavigate();
 
+  // 월 선택 상태
+  const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
+  const [currentYear, setCurrentYear] = useState(dayjs().year());
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
+
   // EventContext에서 행사 데이터 가져오기
-  const { events, addEvent, updateEvent } = useEvents();
+  const { events, addEvent, updateEvent, getEventsByMonth } = useEvents();
 
-  // 진행중인 행사 갯수 계산
-  const ongoingEventsCount = events.filter(event => event.status === "진행중").length;
+  // 월 이동 함수
+  const handlePrevMonth = () => {
+    setSelectedMonth(dayjs(selectedMonth + '-01').subtract(1, 'month').format('YYYY-MM'));
+  };
+  
+  const handleNextMonth = () => {
+    setSelectedMonth(dayjs(selectedMonth + '-01').add(1, 'month').format('YYYY-MM'));
+  };
 
-  // 검색 및 필터링된 행사 목록
-  const filteredEvents = events.filter(event => {
+  // 진행중인 행사 갯수 계산 (선택된 월 기준)
+  const monthEvents = getEventsByMonth(selectedMonth);
+  const ongoingEventsCount = monthEvents.filter(event => event.status === "진행중").length;
+
+  // 검색 및 필터링된 행사 목록 (선택된 월 기준)
+  const filteredEvents = monthEvents.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || 
       (filterType === 'ongoing' && event.status === '진행중') ||
@@ -64,7 +80,8 @@ const EventManagement = () => {
   };
 
   return (
-    <div className="p-8">
+    <>
+      <div className="p-8">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">행사 관리</h1>
@@ -76,6 +93,38 @@ const EventManagement = () => {
         >
           <MdAdd className="w-5 h-5" />
           새 행사 등록
+        </button>
+      </div>
+
+      {/* 월 선택 네비게이션 */}
+      <div className="mb-4 flex items-center gap-4">
+        <button
+          className="p-2 rounded-full hover:bg-gray-100 text-xl"
+          onClick={handlePrevMonth}
+          aria-label="이전 달"
+        >
+          ◀
+        </button>
+        
+        <span className="font-semibold text-lg text-gray-800 min-w-[120px] text-center">
+          {dayjs(selectedMonth + '-01').format('YYYY년 MM월')}
+        </span>
+        
+        {/* 달력 선택 버튼 */}
+        <button
+          className="px-3 py-1 rounded border bg-white text-primary-600 border-primary-600 hover:bg-primary-50 transition-colors"
+          onClick={() => setShowCalendarPicker(true)}
+          title="달력에서 월 선택"
+        >
+          📅
+        </button>
+        
+        <button
+          className="p-2 rounded-full hover:bg-gray-100 text-xl"
+          onClick={handleNextMonth}
+          aria-label="다음 달"
+        >
+          ▶
         </button>
       </div>
 
@@ -417,6 +466,78 @@ const EventManagement = () => {
           event={selectedEvent}
           isCompleted={selectedEvent?.status === '완료'}
         />
+      )}
+
+      {/* 달력 선택 모달 */}
+      {showCalendarPicker && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-80 max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">월 선택</h3>
+              <button
+                onClick={() => setShowCalendarPicker(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* 년도 네비게이션 */}
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <button
+                onClick={() => setCurrentYear(prev => prev - 1)}
+                className="p-2 rounded-full hover:bg-gray-100 text-lg"
+                aria-label="이전 년도"
+              >
+                ◀
+              </button>
+              <span className="font-semibold text-lg text-gray-800 min-w-[80px] text-center">
+                {currentYear}년
+              </span>
+              <button
+                onClick={() => setCurrentYear(prev => prev + 1)}
+                className="p-2 rounded-full hover:bg-gray-100 text-lg"
+                aria-label="다음 년도"
+              >
+                ▶
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {Array.from({ length: 12 }, (_, i) => {
+                const month = dayjs().year(currentYear).month(i).format('YYYY-MM');
+                const monthName = dayjs().year(currentYear).month(i).format('MM월');
+                const isSelected = selectedMonth === month;
+                
+                return (
+                  <button
+                    key={month}
+                    onClick={() => {
+                      setSelectedMonth(month);
+                      setShowCalendarPicker(false);
+                    }}
+                    className={`p-3 rounded-lg border transition-colors ${
+                      isSelected
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {monthName}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowCalendarPicker(false)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   MdCheckCircle, 
@@ -10,13 +10,23 @@ import {
   MdDownload,
   MdPerson,
   MdAccessTime,
-  MdBusiness
+  MdBusiness,
+  MdSync,
+  MdRefresh
 } from 'react-icons/md';
 import * as XLSX from 'xlsx';
 
-const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHeader = false, timelineData: propTimelineData }) => {
+const TimelineView = ({ 
+  event: propEvent, 
+  dayChecklist, 
+  setDayChecklist, 
+  hideHeader = false, 
+  timelineData: propTimelineData,
+  onTimelineUpdate // 체크리스트 상태 업데이트를 위한 콜백
+}) => {
   const navigate = useNavigate();
   const { id } = useParams();
+  
   // 샘플 행사 데이터 (Dashboard.js와 동일하게)
   const events = [
     { id: 1, title: "2024 신년 행사" },
@@ -27,119 +37,180 @@ const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHea
     { id: 6, title: "가을 수확감사절" }
   ];
   const event = propEvent || events.find(e => String(e.id) === String(id));
-  const [timelineData, setTimelineData] = useState([
-    {
-      id: 1,
-      time: "08:00",
-      department: "기획부",
-      title: "행사장 세팅 시작",
-      content: "의자 배치, 음향 테스트",
-      status: "완료",
-      assignee: "김기획",
-      checked: true,
-      checkedAt: "08:05"
-    },
-    {
-      id: 2,
-      time: "09:00",
-      department: "홍보부",
-      title: "홍보물 배치",
-      content: "포스터, 전단지 배치",
-      status: "진행중",
-      assignee: "이홍보",
-      checked: false,
-      checkedAt: null
-    },
-    {
-      id: 3,
-      time: "10:00",
-      department: "전도부",
-      title: "참가자 등록",
-      content: "참가자 명단 확인 및 배지 배부",
-      status: "미진행",
-      assignee: "박전도",
-      checked: false,
-      checkedAt: null
-    },
-    {
-      id: 4,
-      time: "11:00",
-      department: "기획부",
-      title: "최종 점검",
-      content: "전체 준비사항 최종 확인",
-      status: "미진행",
-      assignee: "김기획",
-      checked: false,
-      checkedAt: null
-    }
-  ]);
-  const timelineDataToUse = propTimelineData || timelineData;
+  
+  // 기본 타임라인 데이터 - 체크리스트에서 생성된 데이터로 대체
+  const [timelineData, setTimelineData] = useState([]);
 
   const [filterStatus, setFilterStatus] = useState('all'); // all, completed, pending
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isSynced, setIsSynced] = useState(false);
 
   // 현재 시간 업데이트 (1분마다)
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
     return () => clearInterval(timer);
   }, []);
 
-  const departments = [...new Set(timelineDataToUse.map(item => item.department))];
+  // 체크리스트 데이터가 변경될 때 타임라인 동기화
+  useEffect(() => {
+    console.log('TimelineView: dayChecklist changed:', dayChecklist);
+    if (dayChecklist && dayChecklist.length > 0) {
+      console.log('Syncing checklist to timeline...');
+      syncChecklistToTimeline();
+    } else {
+      console.log('No checklist data to sync');
+      setIsSynced(false);
+    }
+  }, [dayChecklist]);
 
-  const filteredData = timelineDataToUse.filter(item => {
-    const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'completed' && item.checked) ||
-      (filterStatus === 'pending' && !item.checked);
-    
-    const matchesDepartment = filterDepartment === 'all' || item.department === filterDepartment;
-    
-    return matchesStatus && matchesDepartment;
-  });
+  // 체크리스트를 타임라인으로 동기화하는 함수
+  const syncChecklistToTimeline = () => {
+    if (!dayChecklist || !Array.isArray(dayChecklist)) {
+      console.log('No checklist data available or invalid format:', dayChecklist);
+      return;
+    }
 
-  const handleCheckItem = (itemId) => {
-    setTimelineData(prevData =>
-      prevData.map(item =>
-        item.id === itemId
-          ? {
-              ...item,
-              checked: !item.checked,
-              checkedAt: !item.checked ? new Date().toLocaleTimeString('ko-KR', { 
+    console.log('Starting sync process...');
+    const newTimelineData = [];
+    let timelineId = 1;
+
+    // dayChecklist는 { id, name, items: [...] } 구조
+    // items 배열에서 당일 준비 항목들을 추출
+    dayChecklist.forEach(category => {
+      if (category.name === '당일 준비' && category.items && Array.isArray(category.items)) {
+        category.items.forEach(item => {
+          if (item.type === '당일' && item.time) {
+            console.log('Adding timeline item:', { title: item.title, time: item.time, status: item.status });
+            
+            newTimelineData.push({
+              id: timelineId++,
+              time: item.time,
+              department: item.assignee,
+              title: item.title,
+              content: item.note || '',
+              status: item.status,
+              assignee: item.assignee,
+              checked: item.status === '완료',
+              checkedAt: item.status === '완료' ? new Date().toLocaleTimeString('ko-KR', { 
                 hour: '2-digit', 
                 minute: '2-digit' 
               }) : null,
-              status: !item.checked ? '완료' : '미진행'
-            }
-          : item
-      )
-    );
+              checklistItemId: item.id, // 체크리스트 항목과 연결
+              categoryId: item.categoryId || 1 // 기본값 설정
+            });
+          }
+        });
+      }
+    });
+
+    console.log('Generated timeline data:', newTimelineData);
+
+    // 시간순으로 정렬
+    newTimelineData.sort((a, b) => {
+      const [aHours, aMinutes] = a.time.split(':').map(Number);
+      const [bHours, bMinutes] = b.time.split(':').map(Number);
+      return (aHours * 60 + aMinutes) - (bHours * 60 + bMinutes);
+    });
+
+    setTimelineData(newTimelineData);
+    setIsSynced(true);
+    console.log('Sync completed successfully');
   };
 
+  // 타임라인에서 체크리스트 상태 업데이트
+  const handleCheckItem = (itemId) => {
+    if (!dayChecklist || !Array.isArray(dayChecklist)) return;
+
+    const updatedTimelineData = timelineData.map(item =>
+      item.id === itemId
+        ? {
+            ...item,
+            checked: !item.checked,
+            checkedAt: !item.checked ? new Date().toLocaleTimeString('ko-KR', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            }) : null,
+            status: !item.checked ? '완료' : '미진행'
+          }
+        : item
+    );
+
+    setTimelineData(updatedTimelineData);
+
+    // 체크리스트 상태도 업데이트
+    if (onTimelineUpdate) {
+      const timelineItem = updatedTimelineData.find(item => item.id === itemId);
+      if (timelineItem && timelineItem.checklistItemId) {
+        onTimelineUpdate(timelineItem.categoryId, timelineItem.checklistItemId, timelineItem.checked ? '완료' : '미진행');
+      }
+    }
+  };
+
+  // 수동 동기화 버튼
+  const handleManualSync = () => {
+    syncChecklistToTimeline();
+  };
+
+  const departments = timelineData && Array.isArray(timelineData) 
+    ? [...new Set(timelineData.map(item => item.department))]
+    : [];
+
+  const filteredData = timelineData && Array.isArray(timelineData) 
+    ? timelineData.filter(item => {
+        const matchesStatus = filterStatus === 'all' || 
+          (filterStatus === 'completed' && item.checked) ||
+          (filterStatus === 'pending' && !item.checked);
+        
+        const matchesDepartment = filterDepartment === 'all' || item.department === filterDepartment;
+        
+        return matchesStatus && matchesDepartment;
+      })
+    : [];
+
   const isOverdue = (time) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const itemTime = new Date();
-    itemTime.setHours(hours, minutes, 0, 0);
+    if (!time || typeof time !== 'string') return false;
     
-    const now = new Date();
-    const currentTimeOnly = new Date();
-    currentTimeOnly.setHours(now.getHours(), now.getMinutes(), 0, 0);
-    
-    return itemTime < currentTimeOnly;
+    try {
+      const [hours, minutes] = time.split(':').map(Number);
+      if (isNaN(hours) || isNaN(minutes)) return false;
+      
+      const itemTime = new Date();
+      itemTime.setHours(hours, minutes, 0, 0);
+      
+      const now = new Date();
+      const currentTimeOnly = new Date();
+      currentTimeOnly.setHours(now.getHours(), now.getMinutes(), 0, 0);
+      
+      return itemTime < currentTimeOnly;
+    } catch (error) {
+      console.error('Error in isOverdue:', error);
+      return false;
+    }
   };
 
   const isUpcoming = (time) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const itemTime = new Date();
-    itemTime.setHours(hours, minutes, 0, 0);
+    if (!time || typeof time !== 'string') return false;
     
-    const now = new Date();
-    const currentTimeOnly = new Date();
-    currentTimeOnly.setHours(now.getHours(), now.getMinutes(), 0, 0);
-    
-    const diffMinutes = (itemTime - currentTimeOnly) / (1000 * 60);
-    return diffMinutes > 0 && diffMinutes <= 30; // 30분 이내
+    try {
+      const [hours, minutes] = time.split(':').map(Number);
+      if (isNaN(hours) || isNaN(minutes)) return false;
+      
+      const itemTime = new Date();
+      itemTime.setHours(hours, minutes, 0, 0);
+      
+      const now = new Date();
+      const currentTimeOnly = new Date();
+      currentTimeOnly.setHours(now.getHours(), now.getMinutes(), 0, 0);
+      
+      const diffMinutes = (itemTime - currentTimeOnly) / (1000 * 60);
+      return diffMinutes > 0 && diffMinutes <= 30; // 30분 이내
+    } catch (error) {
+      console.error('Error in isUpcoming:', error);
+      return false;
+    }
   };
 
   const getStatusColor = (status, checked, time) => {
@@ -191,13 +262,18 @@ const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHea
   };
 
   const handleExcelDownload = (includeStatus = true) => {
-    const data = timelineDataToUse.map(item => ({
-      '시간': item.time,
-      '부서': item.department,
-      '항목': item.title,
-      '내용': item.content,
+    if (!timelineData || !Array.isArray(timelineData)) {
+      alert('다운로드할 데이터가 없습니다.');
+      return;
+    }
+    
+    const data = timelineData.map(item => ({
+      '시간': item.time || '',
+      '부서': item.department || '',
+      '항목': item.title || '',
+      '내용': item.content || '',
       '상태': includeStatus ? (item.checked ? '완료' : '미완료') : '',
-      '담당자': item.assignee,
+      '담당자': item.assignee || '',
       '체크시간': item.checkedAt || ''
     }));
 
@@ -205,20 +281,26 @@ const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHea
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, '타임라인');
     
-    const fileName = `${event.title}_타임라인_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `${event ? event.title : '행사'}_타임라인_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
 
-  const completedCount = timelineDataToUse.filter(item => item.checked).length;
-  const totalCount = timelineDataToUse.length;
-  const overdueCount = timelineDataToUse.filter(item => !item.checked && isOverdue(item.time)).length;
+  const completedCount = timelineData && Array.isArray(timelineData) 
+    ? timelineData.filter(item => item.checked).length 
+    : 0;
+  const totalCount = timelineData && Array.isArray(timelineData) 
+    ? timelineData.length 
+    : 0;
+  const overdueCount = timelineData && Array.isArray(timelineData) 
+    ? timelineData.filter(item => !item.checked && isOverdue(item.time)).length 
+    : 0;
 
   return (
     <div className="p-6 md:p-8 space-y-6">
       {/* 상단 타이틀/헤더 (hideHeader가 false일 때만) */}
       {!hideHeader && (
         <div className="mb-6 flex items-center gap-4">
-          <button onClick={() => navigate('/events')} className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200 text-gray-700 text-sm font-medium">← 행사 목록으로 돌아가기</button>
+          <button onClick={() => navigate('/')} className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200 text-gray-700 text-sm font-medium">← 대시보드로 돌아가기</button>
           <span className="text-lg font-semibold text-gray-800">{event ? event.title : '행사 정보 없음'}</span>
         </div>
       )}
@@ -227,34 +309,53 @@ const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHea
         <div>
           <h2 className="text-xl font-bold text-gray-800">타임라인 관리</h2>
           <p className="text-gray-600">당일 행사 진행 상황을 실시간으로 관리하세요</p>
+          {dayChecklist && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className={`text-sm px-2 py-1 rounded-full ${
+                isSynced ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'
+              }`}>
+                {isSynced ? '✓ 체크리스트와 동기화됨' : '⚠ 체크리스트 동기화 필요'}
+              </span>
+              <span className="text-xs text-gray-500">
+                ({(() => {
+                  let count = 0;
+                  dayChecklist.forEach(category => {
+                    if (category.name === '당일 준비' && category.items && Array.isArray(category.items)) {
+                      count += category.items.filter(item => item.type === '당일').length;
+                    }
+                  });
+                  return count;
+                })()}개 항목)
+              </span>
+            </div>
+          )}
+          {!dayChecklist && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm px-2 py-1 rounded-full bg-gray-50 text-gray-600">
+                ⚠ 체크리스트 데이터 없음
+              </span>
+              <span className="text-xs text-gray-500">
+                당일 체크리스트 탭에서 데이터를 먼저 로드해주세요
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex gap-3">
-          <label className="cursor-pointer bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2">
-            <MdUpload className="w-4 h-4" />
-            Excel 업로드
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleExcelUpload}
-              className="hidden"
-            />
-          </label>
-          <div className="flex gap-1">
+          {/* 체크리스트 동기화 버튼만 유지 */}
+          {dayChecklist && (
             <button
-              onClick={() => handleExcelDownload(true)}
-              className="bg-green-50 text-green-600 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-2"
+              onClick={handleManualSync}
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                isSynced 
+                  ? 'bg-green-50 text-green-600 hover:bg-green-100' 
+                  : 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+              }`}
+              title="체크리스트와 타임라인 동기화"
             >
-              <MdDownload className="w-4 h-4" />
-              상태 포함 다운로드
+              <MdSync className={`w-4 h-4 ${isSynced ? '' : 'animate-spin'}`} />
+              {isSynced ? '동기화됨' : '동기화'}
             </button>
-            <button
-              onClick={() => handleExcelDownload(false)}
-              className="bg-gray-50 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
-            >
-              <MdDownload className="w-4 h-4" />
-              템플릿 다운로드
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
@@ -393,14 +494,18 @@ const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHea
                                  isOverdue(itemsAtHour[0].time) ? '지연' :
                                  isUpcoming(itemsAtHour[0].time) ? '예정' : '미완료'}
                               </span>
+                              {/* 체크리스트 연동 표시 */}
+                              {itemsAtHour[0].checklistItemId && (
+                                <span className="px-2 py-1 rounded-full text-xs bg-purple-50 text-purple-600 flex items-center gap-1">
+                                  <MdSync className="w-3 h-3" />
+                                  체크리스트
+                                </span>
+                              )}
                             </div>
                             <p className="text-gray-600 text-sm mb-2">{itemsAtHour[0].content}</p>
                             <div className="flex items-center gap-4 text-xs text-gray-500">
-                              <div className="flex items-center gap-1">
-                                <MdBusiness className="w-3 h-3" />
-                                <span>{itemsAtHour[0].department}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
+                              
+                              <div className="flex items-center">
                                 <MdPerson className="w-3 h-3" />
                                 <span>{itemsAtHour[0].assignee}</span>
                               </div>
@@ -420,7 +525,7 @@ const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHea
       </div>
 
       {/* 알림 섹션 */}
-      {(overdueCount > 0 || timelineDataToUse.filter(item => isUpcoming(item.time) && !item.checked).length > 0) && (
+      {(overdueCount > 0 || timelineData.filter(item => isUpcoming(item.time) && !item.checked).length > 0) && (
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800">알림</h3>
@@ -437,7 +542,7 @@ const TimelineView = ({ event: propEvent, dayChecklist, setDayChecklist, hideHea
               </div>
             )}
             
-            {timelineDataToUse.filter(item => isUpcoming(item.time) && !item.checked).map(item => (
+            {timelineData.filter(item => isUpcoming(item.time) && !item.checked).map(item => (
               <div key={item.id} className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <MdSchedule className="w-5 h-5 text-yellow-600 flex-shrink-0" />
                 <div>

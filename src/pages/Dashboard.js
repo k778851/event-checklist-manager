@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { MdEvent, MdChecklist, MdUpdate, MdTrendingUp, MdLock, MdLockOpen, MdSchedule, MdCheckCircle, MdExpandMore, MdExpandLess, MdAssignment, MdToday, MdTimeline } from 'react-icons/md';
+import { MdEvent, MdChecklist, MdUpdate, MdTrendingUp, MdLock, MdLockOpen, MdSchedule, MdCheckCircle, MdExpandMore, MdExpandLess, MdAssignment, MdToday, MdTimeline, MdAdd } from 'react-icons/md';
 import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useEvents } from '../contexts/EventContext';
+import EventCreateModal from '../components/events/EventCreateModal';
 
 const StatCard = ({ icon, title, value, color }) => (
   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
     <div className="flex items-center">
-      <div className={`p-2 rounded-lg ${color}`}>
+      <div className={`p-3 rounded-lg ${color} flex items-center justify-center`}>
         {icon}
       </div>
       <h3 className="ml-3 text-gray-600 text-sm font-medium">{title}</h3>
@@ -97,11 +98,11 @@ const RecentActivity = ({ activity }) => (
 
 const Dashboard = () => {
   // EventContext에서 행사 데이터 가져오기
-  const { events, getEventsByMonth, getEventsByYear } = useEvents();
+  const { events, getEventsByMonth, getEventsByYear, addEvent } = useEvents();
   
   // 월 선택 상태를 가장 먼저 선언
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
-  const currentYear = dayjs().format('YYYY');
+  const [currentYear, setCurrentYear] = useState(dayjs().year());
 
   // 이번 달 시작일과 종료일 계산
   const monthStart = dayjs(selectedMonth + '-01').startOf('month').format('YYYY.MM.DD');
@@ -127,13 +128,9 @@ const Dashboard = () => {
   const handleNextMonth = () => {
     setSelectedMonth(dayjs(selectedMonth + '-01').add(1, 'month').format('YYYY-MM'));
   };
-  const handleAllYear = () => {
-    setSelectedMonth('all');
-  };
 
-  const handleMonthView = () => {
-    setSelectedMonth(dayjs().format('YYYY-MM'));
-  };
+  // 캘린더 피커 상태
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
 
   // 행사 필터링
   let filteredEvents = [];
@@ -142,82 +139,190 @@ const Dashboard = () => {
   } else {
     filteredEvents = getEventsByMonth(selectedMonth);
   }
+  
+  // 필터 상태 관리 (가장 먼저 선언)
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'ongoing', 'scheduled'
+
+  // 상태별 행사 분류
   const ongoingEvents = filteredEvents.filter(event => event.status === "진행중");
   const scheduledEvents = filteredEvents.filter(event => event.status === "예정");
   const completedEvents = filteredEvents.filter(event => event.status === "완료");
 
+  // 필터 적용된 행사 목록
+  const getFilteredEvents = () => {
+    switch (activeFilter) {
+      case 'ongoing':
+        return ongoingEvents;
+      case 'scheduled':
+        return scheduledEvents;
+      case 'completed':
+        return completedEvents;
+      default:
+        return [...ongoingEvents, ...scheduledEvents, ...completedEvents];
+    }
+  };
+
+  const displayEvents = getFilteredEvents();
+
   // isCurrentMonth: 이번 달인지 여부
   const isCurrentMonth = selectedMonth === dayjs().format('YYYY-MM');
 
-  // 통계 계산
-  const stats = [
-    {
-      icon: <MdEvent className="w-6 h-6 text-primary-600" />,
-      title: "진행중인 행사",
-      value: ongoingEvents.length,
-      color: "bg-primary-50"
-    },
-    {
-      icon: <MdSchedule className="w-6 h-6 text-warning-600" />,
-      title: "예정중인 행사",
-      value: scheduledEvents.length,
-      color: "bg-warning-50"
-    },
-    {
-      icon: <MdCheckCircle className="w-6 h-6 text-success-600" />,
-      title: "완료된  행사",
-      value: completedEvents.length,
-      color: "bg-success-50"
+  // 통계 계산 (필터 적용 시 해당 상태만 표시)
+  const getFilteredStats = () => {
+    switch (activeFilter) {
+      case 'ongoing':
+        return [{
+          icon: <MdEvent className="w-6 h-6 text-primary-600" />,
+          title: "진행중인 행사",
+          value: ongoingEvents.length,
+          color: "bg-primary-50"
+        }];
+      case 'scheduled':
+        return [{
+          icon: <MdSchedule className="w-6 h-6 text-warning-600" />,
+          title: "예정중인 행사",
+          value: scheduledEvents.length,
+          color: "bg-warning-50"
+        }];
+      case 'completed':
+        return [{
+          icon: <MdCheckCircle className="w-6 h-6 text-success-600" />,
+          title: "완료된 행사",
+          value: completedEvents.length,
+          color: "bg-success-50"
+        }];
+      default:
+        return [
+          {
+            icon: <MdEvent className="w-6 h-6 text-primary-600" />,
+            title: "진행중인 행사",
+            value: ongoingEvents.length,
+            color: "bg-primary-50"
+          },
+          {
+            icon: <MdSchedule className="w-6 h-6 text-warning-600" />,
+            title: "예정중인 행사",
+            value: scheduledEvents.length,
+            color: "bg-warning-50"
+          },
+          {
+            icon: <MdCheckCircle className="w-6 h-6 text-success-600" />,
+            title: "완료된 행사",
+            value: completedEvents.length,
+            color: "bg-success-50"
+          }
+        ];
     }
-  ];
+  };
+
+  const stats = getFilteredStats();
 
   // 아코디언 상태 관리
   const [openOngoing, setOpenOngoing] = useState(true);
-  const [openScheduled, setOpenScheduled] = useState(false);
-  const [openCompleted, setOpenCompleted] = useState(false);
+  const [openScheduled, setOpenScheduled] = useState(true);
+  const [openCompleted, setOpenCompleted] = useState(true);
+
+  // 행사 등록 모달 상태
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // 행사 생성 핸들러
+  const handleCreateEvent = (eventData) => {
+    // EventContext의 addEvent 함수 사용
+    addEvent(eventData);
+    setIsCreateModalOpen(false);
+    console.log('새 행사 생성:', eventData);
+  };
 
   return (
+    <>
     <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">대시보드</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">대시보드</h1>
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary-700 transition-colors"
+        >
+          <MdAdd className="w-5 h-5" />
+          새 행사 등록
+        </button>
+      </div>
       
-      {/* 월 선택 화살표 네비게이션 */}
+      {/* 월 선택 네비게이션 */}
       <div className="mb-4 flex items-center gap-4">
         <button
           className="p-2 rounded-full hover:bg-gray-100 text-xl"
           onClick={handlePrevMonth}
           aria-label="이전 달"
-          disabled={selectedMonth === 'all'}
         >
           ◀
         </button>
+        
         <span className="font-semibold text-lg text-gray-800 min-w-[120px] text-center">
           {selectedMonth === 'all'
             ? `${currentYear}년 전체`
             : dayjs(selectedMonth + '-01').format('YYYY년 MM월')}
         </span>
+        
+        {/* 달력 선택 버튼 */}
+        <button
+          className="px-3 py-1 rounded border bg-white text-primary-600 border-primary-600 hover:bg-primary-50 transition-colors"
+          onClick={() => setShowCalendarPicker(true)}
+          title="달력에서 월 선택"
+        >
+          📅
+        </button>
+        
         <button
           className="p-2 rounded-full hover:bg-gray-100 text-xl"
           onClick={handleNextMonth}
           aria-label="다음 달"
-          disabled={selectedMonth === 'all'}
         >
           ▶
         </button>
-        {selectedMonth !== 'all' ? (
-          <button
-            className={`ml-2 px-3 py-1 rounded border ${selectedMonth === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-primary-600 border-primary-600'}`}
-            onClick={handleAllYear}
-          >
-            올해 전체
-          </button>
-        ) : (
-          <button
-            className="ml-2 px-3 py-1 rounded border bg-white text-primary-600 border-primary-600"
-            onClick={handleMonthView}
-          >
-            월별 보기
-          </button>
-        )}
+      </div>
+
+      {/* 필터 버튼 */}
+      <div className="mb-6 flex gap-2">
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeFilter === 'all'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          전체 행사
+        </button>
+        <button
+          onClick={() => setActiveFilter('ongoing')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeFilter === 'ongoing'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          진행중인 행사만
+        </button>
+        <button
+          onClick={() => setActiveFilter('scheduled')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeFilter === 'scheduled'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          예정중인 행사만
+        </button>
+        <button
+          onClick={() => setActiveFilter('completed')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeFilter === 'completed'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          완료된 행사만
+        </button>
       </div>
 
       {/* 통계 카드 */}
@@ -227,10 +332,34 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* 상태별 행사 + 최근 활동 2단 레이아웃 */}
+      {/* 필터링된 행사 목록 + 최근 활동 2단 레이아웃 */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* 상태별 행사 아코디언 (좌측 3/4) */}
+        {/* 필터링된 행사 목록 (좌측 3/4) */}
         <div className="lg:col-span-3 space-y-6">
+          {/* 필터 적용 시 단일 섹션으로 표시 */}
+          {activeFilter !== 'all' ? (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  {activeFilter === 'ongoing' ? '진행중인 행사' : 
+                   activeFilter === 'scheduled' ? '예정중인 행사' : '완료된 행사'}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
+                  {displayEvents.map((event, index) => (
+                    <EventCard key={index} event={event} />
+                  ))}
+                  {displayEvents.length === 0 && (
+                    <div className="col-span-full text-center py-8 text-gray-500">
+                      {activeFilter === 'ongoing' ? '진행중인 행사가 없습니다.' : 
+                       activeFilter === 'scheduled' ? '예정된 행사가 없습니다.' : '완료된 행사가 없습니다.'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* 전체 보기 시 기존 아코디언 구조 유지 */
+            <>
           {/* 진행중인 행사 아코디언 */}
           <div>
             <button
@@ -311,6 +440,8 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+            </>
+          )}
         </div>
 
         {/* 최근 활동 (우측 1/4) */}
@@ -324,6 +455,88 @@ const Dashboard = () => {
         </div>
       </div>
     </div>
+    
+    {/* 달력 선택 모달 */}
+    {showCalendarPicker && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-80 max-w-md">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">월 선택</h3>
+            <button
+              onClick={() => setShowCalendarPicker(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+          
+          {/* 년도 네비게이션 */}
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <button
+              onClick={() => setCurrentYear(prev => prev - 1)}
+              className="p-2 rounded-full hover:bg-gray-100 text-lg"
+              aria-label="이전 년도"
+            >
+              ◀
+            </button>
+            <span className="font-semibold text-lg text-gray-800 min-w-[80px] text-center">
+              {currentYear}년
+            </span>
+            <button
+              onClick={() => setCurrentYear(prev => prev + 1)}
+              className="p-2 rounded-full hover:bg-gray-100 text-lg"
+              aria-label="다음 년도"
+            >
+              ▶
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {Array.from({ length: 12 }, (_, i) => {
+              const month = dayjs().year(currentYear).month(i).format('YYYY-MM');
+              const monthName = dayjs().year(currentYear).month(i).format('MM월');
+              const isSelected = selectedMonth === month;
+              
+              return (
+                <button
+                  key={month}
+                  onClick={() => {
+                    setSelectedMonth(month);
+                    setShowCalendarPicker(false);
+                  }}
+                  className={`p-3 rounded-lg border transition-colors ${
+                    isSelected
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {monthName}
+                </button>
+              );
+            })}
+          </div>
+          
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowCalendarPicker(false)}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* 행사 등록 모달 */}
+    {isCreateModalOpen && (
+      <EventCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateEvent}
+      />
+    )}
+  </>
   );
 };
 
