@@ -89,7 +89,7 @@ const EventEditModal = ({ isOpen, onClose, onSubmit, event, isCompleted }) => {
               <option value="총회">총회</option>
               <option value="지파">지파</option>
               <option value="지역">지역</option>
-              <option value="부서">부서</option>
+              <option value="24부서/회">24부서/회</option>
             </select>
           </div>
 

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이벤트 체크리스트 템플릿</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #4a90e2;
+            color: white;
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: bold;
+            color: #495057;
+        }
+        td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            vertical-align: top;
+        }
+        .category {
+            background-color: #e3f2fd;
+            font-weight: bold;
+            text-align: center;
+        }
+        .sub-item {
+            background-color: #f8f9fa;
+        }
+        .check-column {
+            text-align: center;
+            width: 80px;
+        }
+        .check-box {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #4a90e2;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .check-box:checked {
+            background-color: #4a90e2;
+        }
+        .export-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+        .export-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title" contenteditable="true">이벤트 체크리스트 타이틀을 입력하세요</div>
+        
+        <button class="export-btn" onclick="exportToExcel()">엑셀로 내보내기</button>
+        
+        <table id="checklistTable">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">목차</th>
+                    <th style="width: 20%;">항목</th>
+                    <th style="width: 40%;">내용</th>
+                    <th style="width: 15%;">부서</th>
+                    <th style="width: 17%;">담당</th>
+                    <th class="check-column">체크</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="category">1</td>
+                    <td class="category" contenteditable="true">현장배치도</td>
+                    <td contenteditable="true">부스별 배치도</td>
+                    <td contenteditable="true">기획부</td>
+                    <td contenteditable="true">콘텐츠기획과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">2</td>
+                    <td class="category" contenteditable="true">총회장님 단상</td>
+                    <td contenteditable="true">단상 발판 배치</td>
+                    <td contenteditable="true">건설부</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">2-4단: 110cm x 45cm x 13cm (3개)</td>
+                    <td contenteditable="true">건설부</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">1단: 110cm x 45cm x 11cm (1개)</td>
+                    <td contenteditable="true">건설부</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">구즈넥 마이크(단상 양쪽) 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">음향과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">수반(단상 양옆)</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">미술창조과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">전자시계 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">성경책 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">물컵/물수건 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">3</td>
+                    <td class="category" contenteditable="true">총회장님 강대상</td>
+                    <td contenteditable="true">단상 모니터링 TV(왼쪽, 오른쪽 2대)</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">영상과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">강대상 발판 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">음향과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">2단: 73.5cm x 45cm x 15cm (1개)</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">음향과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">1단: 140cm x 40cm x 15cm (1개)</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">음향과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">서큘레이터 2대 배치(단상, 단상좌석 용)</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">높이 조절용 선풍기</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">4</td>
+                    <td class="category" contenteditable="true">총회장님 단상 좌석</td>
+                    <td contenteditable="true">흑판 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">음향과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">티슈 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">물컵/물수건 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">거울 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">이름표 부착</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">아크릴 식순지(왼쪽) 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">방석(금색) 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">발 방석(금색) 배치</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">5</td>
+                    <td class="category" contenteditable="true">총회장님 사진촬영</td>
+                    <td contenteditable="true">방석 준비</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">금색 의자 준비</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">금색 의자 보 준비</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">총회장님 위치 마킹</td>
+                    <td contenteditable="true">문화부</td>
+                    <td contenteditable="true">의전과</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">6</td>
+                    <td class="category" contenteditable="true">내부안내</td>
+                    <td contenteditable="true">층별 담당자 교육</td>
+                    <td contenteditable="true">전도부</td>
+                    <td contenteditable="true">유승호</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">층별 안내자 교육</td>
+                    <td contenteditable="true">전도부</td>
+                    <td contenteditable="true">유승호</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">층별 안내자 배치</td>
+                    <td contenteditable="true">전도부</td>
+                    <td contenteditable="true">유승호</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">7</td>
+                    <td class="category" contenteditable="true">외부안내</td>
+                    <td contenteditable="true">구간 담당자 교육</td>
+                    <td contenteditable="true">전도부</td>
+                    <td contenteditable="true">곽현민</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">구간 안내자 교육</td>
+                    <td contenteditable="true">전도부</td>
+                    <td contenteditable="true">곽현민</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">구간 안내자 배치</td>
+                    <td contenteditable="true">전도부</td>
+                    <td contenteditable="true">곽현민</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">8</td>
+                    <td class="category" contenteditable="true">다과, 봉송</td>
+                    <td contenteditable="true">다과 재료 준비</td>
+                    <td contenteditable="true">부녀회</td>
+                    <td contenteditable="true">봉사부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">다과 세팅</td>
+                    <td contenteditable="true">부녀회</td>
+                    <td contenteditable="true">봉사부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">상차림 세팅</td>
+                    <td contenteditable="true">부녀회</td>
+                    <td contenteditable="true">봉사부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">봉송 물품 준비</td>
+                    <td contenteditable="true">부녀회</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">차량 키트 준비</td>
+                    <td contenteditable="true">부녀회</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">9</td>
+                    <td class="category" contenteditable="true">보안 근무</td>
+                    <td contenteditable="true">경호대 집결 및 근무 준비</td>
+                    <td contenteditable="true">섭외부</td>
+                    <td contenteditable="true">서무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">외부도열 보안 근무 배치</td>
+                    <td contenteditable="true">섭외부</td>
+                    <td contenteditable="true">부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">총회장님 이동 동선 경호 배치</td>
+                    <td contenteditable="true">섭외부</td>
+                    <td contenteditable="true">부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">10</td>
+                    <td class="category" contenteditable="true">외부 도열</td>
+                    <td contenteditable="true">스탭집결 및 자리배치</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">스탭 리허설</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">광주 지교회 도열단 집결</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">수기, 모자 불출 및 리허설</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">성전 주변 도열 동문 앞 주차장 이동</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">지교회 도열단 환송구간 이동</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">지교회 도열단 귀소 버스 탑승</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">11</td>
+                    <td class="category" contenteditable="true">동문 퍼포먼스</td>
+                    <td contenteditable="true">남문 앞 -> 동문 앞 이동</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">풍선 불출, 퍼포먼스 리허설</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">남문 앞 환송구간 이동</td>
+                    <td contenteditable="true">청년회</td>
+                    <td contenteditable="true">문화부장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">12</td>
+                    <td class="category" contenteditable="true">의료</td>
+                    <td contenteditable="true">의료진 스탭 도착</td>
+                    <td contenteditable="true">보건후생복지부</td>
+                    <td contenteditable="true">서무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">의료팀 무전기 수신</td>
+                    <td contenteditable="true">보건후생복지부</td>
+                    <td contenteditable="true">서무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">성전 층별 의료진 배치</td>
+                    <td contenteditable="true">보건후생복지부</td>
+                    <td contenteditable="true">서무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">성전 층별 의료 물품 세팅</td>
+                    <td contenteditable="true">보건후생복지부</td>
+                    <td contenteditable="true">서무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">지교회 응급 구호차량 배치</td>
+                    <td contenteditable="true">보건후생복지부</td>
+                    <td contenteditable="true">서무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr>
+                    <td class="category">13</td>
+                    <td class="category" contenteditable="true">찬양</td>
+                    <td contenteditable="true">관현악+건반 음향 체크</td>
+                    <td contenteditable="true">찬양부</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">찬양단 리허설</td>
+                    <td contenteditable="true">찬양부</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">찬양대 리허설</td>
+                    <td contenteditable="true">찬양부</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">감사찬송 퍼포먼스 리허설</td>
+                    <td contenteditable="true">찬양부</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">감사찬송 4층 성도 리허설</td>
+                    <td contenteditable="true">찬양부</td>
+                    <td contenteditable="true">총무</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+                <tr class="sub-item">
+                    <td></td>
+                    <td></td>
+                    <td contenteditable="true">군악대 환영 도열 배치</td>
+                    <td contenteditable="true">찬양부</td>
+                    <td contenteditable="true">군악단장</td>
+                    <td class="check-column"><input type="checkbox" class="check-box"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function exportToExcel() {
+            const table = document.getElementById('checklistTable');
+            const title = document.querySelector('.title').textContent;
+            
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "타이틀,항목,내용,부서,담당,체크\n";
+            
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = [];
+                
+                cells.forEach((cell, index) => {
+                    if (index === 5) { // 체크 컬럼
+                        const checkbox = cell.querySelector('input[type="checkbox"]');
+                        rowData.push(checkbox.checked ? '완료' : '');
+                    } else {
+                        rowData.push(cell.textContent || '');
+                    }
+                });
+                
+                csvContent += rowData.join(',') + '\n';
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", title + "_체크리스트.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // 체크박스 상태 저장
+        document.querySelectorAll('.check-box').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                localStorage.setItem('checklist_' + this.closest('tr').rowIndex, this.checked);
+            });
+            
+            // 저장된 상태 복원
+            const savedState = localStorage.getItem('checklist_' + checkbox.closest('tr').rowIndex);
+            if (savedState !== null) {
+                checkbox.checked = savedState === 'true';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,15 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  MdDashboard, 
-  MdEvent, 
-  MdChecklist, 
-  MdTimeline, 
-  MdPerson,
-  MdAssignment,
-  MdSettings,
-  MdHelp
-} from 'react-icons/md';
+// CDN 아이콘 사용
 
 const UserSidebar = () => {
   // 사용자 정보 (실제로는 로그인된 사용자 정보를 사용해야 함)
@@ -22,25 +13,25 @@ const UserSidebar = () => {
   const menuItems = [
     {
       path: '/user',
-      icon: <MdDashboard className="w-5 h-5" />,
+      icon: <i className="icon-chart-bar w-6 h-6" />,
       label: '대시보드',
       description: '내 담당 항목 현황'
     },
     {
       path: '/user/events',
-      icon: <MdEvent className="w-5 h-5" />,
+      icon: <i className="icon-calendar-days w-6 h-6" />,
       label: '행사 목록',
       description: '담당 행사 관리'
     },
     {
       path: '/user/tasks',
-      icon: <MdAssignment className="w-5 h-5" />,
+      icon: <i className="icon-clipboard-document-list w-6 h-6" />,
       label: '내 담당 항목',
       description: '전체 담당 항목'
     },
     {
       path: '/user/help',
-      icon: <MdHelp className="w-5 h-5" />,
+      icon: <i className="icon-question-mark-circle w-6 h-6" />,
       label: '도움말',
       description: '사용법 안내'
     }
@@ -52,7 +43,7 @@ const UserSidebar = () => {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-            <MdPerson className="w-6 h-6 text-white" />
+            <i className="icon-user w-7 h-7 text-white" />
           </div>
           <div>
             <h2 className="font-semibold text-gray-800">{currentUser.name}</h2>

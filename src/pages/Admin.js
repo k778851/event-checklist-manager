@@ -41,11 +41,13 @@ const Admin = () => {
 
   // 사용자 수정 모드 상태
   const [editingUser, setEditingUser] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     region: '',
     department: '',
-    role: '사용자'
+    role: '사용자',
+    uniqueId: ''
   });
 
   // 검색 및 필터링 상태
@@ -80,7 +82,24 @@ const Admin = () => {
 
   // 사용자 관리 함수들
   const handleAddUser = () => {
-    if (newUser.name.trim() === '' || newUser.region === '' || newUser.department === '') return;
+    if (newUser.name.trim() === '' || newUser.region === '' || newUser.department === '' || newUser.uniqueId.trim() === '') {
+      alert('모든 필드를 입력해주세요.');
+      return;
+    }
+    
+    // 고유번호 형식 검증 (8자리-5자리)
+    const uniqueIdPattern = /^\d{8}-\d{5}$/;
+    if (!uniqueIdPattern.test(newUser.uniqueId)) {
+      alert('고유번호는 8자리-5자리 형식(예: 00371210-00149)으로 입력해주세요.');
+      return;
+    }
+    
+    // 중복 고유번호 확인
+    const isDuplicate = users.some(user => user.uniqueId === newUser.uniqueId);
+    if (isDuplicate) {
+      alert('이미 존재하는 고유번호입니다.');
+      return;
+    }
     
     // 권한 수정 제한
     if (!canEditRole() && newUser.role !== '사용자') {
@@ -90,14 +109,17 @@ const Admin = () => {
     
     setUsers(prev => [...prev, {
       id: Date.now(),
-      ...newUser,
-      uniqueId: generateUniqueId()
+      ...newUser
     }]);
+    
+    // 모달 닫기 및 폼 초기화
+    setShowAddModal(false);
     setNewUser({
       name: '',
       region: '',
       department: '',
-      role: '사용자'
+      role: '사용자',
+      uniqueId: ''
     });
   };
 
@@ -144,7 +166,17 @@ const Admin = () => {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">사용자 관리</h1>
+      {/* 타이틀과 사용자 추가 버튼을 한 줄에 배치 */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">사용자 관리</h1>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
+        >
+          <MdAdd className="w-5 h-5" />
+          사용자 추가
+        </button>
+      </div>
       
       {/* 현재 사용자 정보 표시 */}
       <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4 flex items-center gap-2">
@@ -160,58 +192,6 @@ const Admin = () => {
         {!canEditRole() && <span className="text-red-600 font-medium">권한 수정은 총괄관리자만 가능합니다.</span>}
       </p>
 
-      {/* 새 사용자 추가 */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
-        <div className="flex gap-4">
-          <input
-            type="text"
-            placeholder="이름"
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={newUser.name}
-            onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
-          />
-          <select
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={newUser.region}
-            onChange={(e) => setNewUser(prev => ({ ...prev, region: e.target.value }))}
-          >
-            <option value="">지역 선택</option>
-            {REGIONS.map(region => (
-              <option key={region} value={region}>{region}</option>
-            ))}
-          </select>
-          <select
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={newUser.department}
-            onChange={(e) => setNewUser(prev => ({ ...prev, department: e.target.value }))}
-          >
-            <option value="">부서 선택</option>
-            {DEPARTMENTS.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
-          <select
-            className={`flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-              !canEditRole() ? 'bg-gray-100 cursor-not-allowed' : ''
-            }`}
-            value={newUser.role}
-            onChange={(e) => setNewUser(prev => ({ ...prev, role: e.target.value }))}
-            disabled={!canEditRole()}
-          >
-            <option value="사용자">사용자</option>
-            {canEditRole() && <option value="관리자">관리자</option>}
-            {canEditRole() && <option value="총괄관리자">총괄관리자</option>}
-          </select>
-          <button
-            onClick={handleAddUser}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
-          >
-            <MdAdd className="w-5 h-5" />
-            사용자 추가
-          </button>
-        </div>
-      </div>
-
       {/* 검색 및 필터링 */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
         <div className="flex flex-wrap gap-4 items-center">
@@ -226,19 +206,16 @@ const Admin = () => {
             />
           </div>
           
-          <div className="flex items-center gap-2">
-            <MdLocationOn className="w-5 h-5 text-gray-400" />
-            <select
-              value={selectedRegion}
-              onChange={(e) => setSelectedRegion(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">전체 지역</option>
-              {REGIONS.map(region => (
-                <option key={region} value={region}>{region}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={selectedRegion}
+            onChange={(e) => setSelectedRegion(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">전체 지역</option>
+            {REGIONS.map(region => (
+              <option key={region} value={region}>{region}</option>
+            ))}
+          </select>
           
           <select
             value={selectedDepartment}
@@ -354,11 +331,7 @@ const Admin = () => {
               </>
             ) : (
               <>
-                <div className="col-span-2">
-                  <span className="px-2 py-1 rounded-full text-xs bg-blue-50 text-blue-600">
-                    {user.region}
-                  </span>
-                </div>
+                <div className="col-span-2">{user.region}</div>
                 <div className="col-span-2">{user.department}</div>
                 <div className="col-span-2">{user.name}</div>
                 <div className="col-span-2 font-mono tracking-wider">{user.uniqueId}</div>
@@ -399,6 +372,132 @@ const Admin = () => {
           </div>
         ))}
       </div>
+
+      {/* 사용자 추가 모달 */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">새 사용자 추가</h2>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <MdClose className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => { e.preventDefault(); handleAddUser(); }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  지역 *
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={newUser.region}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, region: e.target.value }))}
+                  required
+                >
+                  <option value="">지역을 선택하세요</option>
+                  {REGIONS.map(region => (
+                    <option key={region} value={region}>{region}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  부서 *
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={newUser.department}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, department: e.target.value }))}
+                  required
+                >
+                  <option value="">부서를 선택하세요</option>
+                  {DEPARTMENTS.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  이름 *
+                </label>
+                <input
+                  type="text"
+                  placeholder="이름을 입력하세요"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  고유번호 *
+                </label>
+                <input
+                  type="text"
+                  placeholder="예: 00371210-00149"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
+                  value={newUser.uniqueId}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, uniqueId: e.target.value }))}
+                  pattern="[0-9]{8}-[0-9]{5}"
+                  maxLength={14}
+                  required
+                />
+                <div className="mt-1 text-xs text-gray-500">
+                  하이픈(-)을 포함하여 8자리-5자리 형식으로 입력
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  권한 *
+                </label>
+                <select
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    !canEditRole() ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
+                  value={newUser.role}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, role: e.target.value }))}
+                  disabled={!canEditRole()}
+                  required
+                >
+                  <option value="사용자">사용자</option>
+                  {canEditRole() && <option value="관리자">관리자</option>}
+                  {canEditRole() && <option value="총괄관리자">총괄관리자</option>}
+                </select>
+                {!canEditRole() && (
+                  <div className="mt-1 text-xs text-red-500">
+                    권한 수정은 총괄관리자만 가능합니다
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  추가
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

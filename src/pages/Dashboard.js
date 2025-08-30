@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MdEvent, MdChecklist, MdUpdate, MdTrendingUp, MdLock, MdLockOpen, MdSchedule, MdCheckCircle, MdExpandMore, MdExpandLess, MdAssignment, MdToday, MdTimeline, MdAdd } from 'react-icons/md';
+// CDN 아이콘 사용
 import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useEvents } from '../contexts/EventContext';
@@ -21,6 +21,21 @@ const StatCard = ({ icon, title, value, color }) => (
 
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
+  
+  // 날짜 기반으로 행사 상태 계산
+  const getEventStatus = () => {
+    if (!event.internalDate) return '미정';
+    
+    const today = dayjs().format('YYYY-MM-DD');
+    const eventDate = event.internalDate;
+    
+    if (eventDate === today) return '진행중';
+    if (eventDate > today) return '예정';
+    return '완료';
+  };
+  
+  const eventStatus = getEventStatus();
+  
   const handleChecklist = (tab) => {
     if (tab === 'timeline') {
       navigate(`/timeline/${event.id}`);
@@ -43,11 +58,12 @@ const EventCard = ({ event }) => {
           </span>
         </div>
         <span className={`px-2 py-1 rounded-full text-xs ${
-          event.status === '진행중' ? 'bg-primary-50 text-primary-600' :
-          event.status === '예정' ? 'bg-warning-50 text-warning-600' :
-          'bg-success-50 text-success-600'
+          eventStatus === '진행중' ? 'bg-primary-50 text-primary-600' :
+          eventStatus === '예정' ? 'bg-warning-50 text-warning-600' :
+          eventStatus === '완료' ? 'bg-success-50 text-success-600' :
+          'bg-gray-50 text-gray-600'
         }`}>
-          {event.status}
+          {eventStatus}
         </span>
       </div>
       <div className="w-full bg-gray-100 rounded-full h-2">
@@ -62,21 +78,21 @@ const EventCard = ({ event }) => {
           onClick={() => handleChecklist('pre')}
           className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
         >
-          <MdChecklist className="w-4 h-4" />
+          <i className="icon-clipboard-document-list text-sm" />
           사전 체크리스트
         </button>
         <button
           onClick={() => handleChecklist('day')}
           className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm"
         >
-          <MdChecklist className="w-4 h-4" />
+          <i className="icon-clipboard-document-list text-sm" />
           당일 체크리스트
         </button>
         <button
           onClick={() => handleChecklist('timeline')}
           className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm"
         >
-          <MdTimeline className="w-4 h-4" />
+          <i className="icon-clock text-sm" />
           타임라인
         </button>
       </div>
@@ -86,7 +102,7 @@ const EventCard = ({ event }) => {
 
 const RecentActivity = ({ activity }) => (
   <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-    <div className="p-2 bg-gray-100 rounded-full">
+    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
       {activity.icon}
     </div>
     <div>
@@ -110,12 +126,12 @@ const Dashboard = () => {
 
   const recentActivities = [
     {
-      icon: <MdUpdate className="w-4 h-4 text-gray-600" />,
+      icon: <i className="icon-arrow-path text-base text-gray-600" />,
       title: "체크리스트 항목 업데이트",
       time: "10분 전"
     },
     {
-      icon: <MdEvent className="w-4 h-4 text-gray-600" />,
+      icon: <i className="icon-calendar-days text-base text-gray-600" />,
       title: "새로운 행사 등록",
       time: "1시간 전"
     }
@@ -143,10 +159,23 @@ const Dashboard = () => {
   // 필터 상태 관리 (가장 먼저 선언)
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'ongoing', 'scheduled'
 
-  // 상태별 행사 분류
-  const ongoingEvents = filteredEvents.filter(event => event.status === "진행중");
-  const scheduledEvents = filteredEvents.filter(event => event.status === "예정");
-  const completedEvents = filteredEvents.filter(event => event.status === "완료");
+  // 상태별 행사 분류 (날짜 기반)
+  const today = dayjs().format('YYYY-MM-DD');
+  
+  const ongoingEvents = filteredEvents.filter(event => {
+    // 오늘 날짜에 진행되는 행사
+    return event.internalDate === today;
+  });
+  
+  const scheduledEvents = filteredEvents.filter(event => {
+    // 오늘 이후에 진행될 행사
+    return event.internalDate && event.internalDate > today;
+  });
+  
+  const completedEvents = filteredEvents.filter(event => {
+    // 오늘 이전에 완료된 행사
+    return event.internalDate && event.internalDate < today;
+  });
 
   // 필터 적용된 행사 목록
   const getFilteredEvents = () => {
@@ -172,21 +201,21 @@ const Dashboard = () => {
     switch (activeFilter) {
       case 'ongoing':
         return [{
-          icon: <MdEvent className="w-6 h-6 text-primary-600" />,
+          icon: <i className="icon-calendar text-3xl text-primary-600" />,
           title: "진행중인 행사",
           value: ongoingEvents.length,
           color: "bg-primary-50"
         }];
       case 'scheduled':
         return [{
-          icon: <MdSchedule className="w-6 h-6 text-warning-600" />,
+          icon: <i className="icon-calendar-days text-3xl text-warning-600" />,
           title: "예정중인 행사",
           value: scheduledEvents.length,
           color: "bg-warning-50"
         }];
       case 'completed':
         return [{
-          icon: <MdCheckCircle className="w-6 h-6 text-success-600" />,
+          icon: <i className="icon-check text-3xl text-success-600" />,
           title: "완료된 행사",
           value: completedEvents.length,
           color: "bg-success-50"
@@ -194,19 +223,19 @@ const Dashboard = () => {
       default:
         return [
           {
-            icon: <MdEvent className="w-6 h-6 text-primary-600" />,
+            icon: <i className="icon-calendar text-3xl text-primary-600" />,
             title: "진행중인 행사",
             value: ongoingEvents.length,
             color: "bg-primary-50"
           },
           {
-            icon: <MdSchedule className="w-6 h-6 text-warning-600" />,
-            title: "예정중인 행사",
+            icon: <i className="icon-calendar-days text-3xl text-warning-600" />,
+            title: "예정된 행사",
             value: scheduledEvents.length,
             color: "bg-warning-50"
           },
           {
-            icon: <MdCheckCircle className="w-6 h-6 text-success-600" />,
+            icon: <i className="icon-check text-3xl text-success-600" />,
             title: "완료된 행사",
             value: completedEvents.length,
             color: "bg-success-50"
@@ -227,10 +256,27 @@ const Dashboard = () => {
 
   // 행사 생성 핸들러
   const handleCreateEvent = (eventData) => {
+    // 새 행사에 기본 체크리스트 데이터 추가 (초기화된 상태)
+    const eventWithChecklist = {
+      ...eventData,
+      checklistData: [
+        {
+          id: 1,
+          name: "사전 준비",
+          items: []
+        },
+        {
+          id: 2,
+          name: "당일 준비",
+          items: []
+        }
+      ]
+    };
+    
     // EventContext의 addEvent 함수 사용
-    addEvent(eventData);
+    addEvent(eventWithChecklist);
     setIsCreateModalOpen(false);
-    console.log('새 행사 생성:', eventData);
+    console.log('새 행사 생성 (체크리스트 초기화):', eventWithChecklist);
   };
 
   return (
@@ -242,7 +288,7 @@ const Dashboard = () => {
           onClick={() => setIsCreateModalOpen(true)}
           className="bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary-700 transition-colors"
         >
-          <MdAdd className="w-5 h-5" />
+          <i className="icon-plus text-lg" />
           새 행사 등록
         </button>
       </div>
@@ -301,7 +347,7 @@ const Dashboard = () => {
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          진행중인 행사만
+          진행중
         </button>
         <button
           onClick={() => setActiveFilter('scheduled')}
@@ -311,7 +357,7 @@ const Dashboard = () => {
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          예정중인 행사만
+          예정
         </button>
         <button
           onClick={() => setActiveFilter('completed')}
@@ -321,7 +367,7 @@ const Dashboard = () => {
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          완료된 행사만
+          완료
         </button>
       </div>
 
@@ -342,7 +388,7 @@ const Dashboard = () => {
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">
                   {activeFilter === 'ongoing' ? '진행중인 행사' : 
-                   activeFilter === 'scheduled' ? '예정중인 행사' : '완료된 행사'}
+                   activeFilter === 'scheduled' ? '예정된 행사' : '완료된 행사'}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
                   {displayEvents.map((event, index) => (
@@ -360,7 +406,7 @@ const Dashboard = () => {
           ) : (
             /* 전체 보기 시 기존 아코디언 구조 유지 */
             <>
-          {/* 진행중인 행사 아코디언 */}
+          {/* 오늘 진행되는 행사 아코디언 */}
           <div>
             <button
               className="w-full flex items-center justify-between text-xl font-bold text-gray-900 mb-2 px-2 py-3 rounded hover:bg-gray-50 transition"
@@ -368,10 +414,10 @@ const Dashboard = () => {
               aria-expanded={openOngoing}
             >
               <span className="flex items-center gap-2">
-                <MdEvent className="w-5 h-5 text-primary-600" />
+                <i className="icon-calendar w-6 h-6 text-primary-600" />
                 진행중인 행사 ({ongoingEvents.length})
               </span>
-              {openOngoing ? <MdExpandLess /> : <MdExpandMore />}
+              {openOngoing ? <i className="icon-chevron-up w-6 h-6" /> : <i className="icon-chevron-down w-6 h-6" />}
             </button>
             {openOngoing && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 mb-4 animate-fadein">
@@ -387,7 +433,7 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* 예정행사 아코디언 */}
+          {/* 예정된 행사 아코디언 */}
           <div>
             <button
               className="w-full flex items-center justify-between text-xl font-bold text-gray-900 mb-2 px-2 py-3 rounded hover:bg-gray-50 transition"
@@ -395,10 +441,10 @@ const Dashboard = () => {
               aria-expanded={openScheduled}
             >
               <span className="flex items-center gap-2">
-                <MdSchedule className="w-5 h-5 text-warning-600" />
-                예정중인 행사 ({scheduledEvents.length})
+                <i className="icon-calendar-days w-6 h-6 text-warning-600" />
+                예정된 행사 ({scheduledEvents.length})
               </span>
-              {openScheduled ? <MdExpandLess /> : <MdExpandMore />}
+              {openScheduled ? <i className="icon-chevron-up w-6 h-6" /> : <i className="icon-chevron-down w-6 h-6" />}
             </button>
             {openScheduled && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 mb-4 animate-fadein">
@@ -414,7 +460,7 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* 완료행사 아코디언 */}
+          {/* 완료된 행사 아코디언 */}
           <div>
             <button
               className="w-full flex items-center justify-between text-xl font-bold text-gray-900 mb-2 px-2 py-3 rounded hover:bg-gray-50 transition"
@@ -422,10 +468,10 @@ const Dashboard = () => {
               aria-expanded={openCompleted}
             >
               <span className="flex items-center gap-2">
-                <MdCheckCircle className="w-5 h-5 text-success-600" />
+                <i className="icon-check w-6 h-6 text-success-600" />
                 완료된 행사 ({completedEvents.length})
               </span>
-              {openCompleted ? <MdExpandLess /> : <MdExpandMore />}
+              {openCompleted ? <i className="icon-chevron-up w-6 h-6" /> : <i className="icon-chevron-down w-6 h-6" />}
             </button>
             {openCompleted && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 mb-4 animate-fadein">
