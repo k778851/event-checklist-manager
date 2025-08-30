@@ -8,13 +8,11 @@ import {
   MdDelete,
   MdCheckCircle,
   MdRadioButtonUnchecked,
-  MdSchedule,
   MdUpload,
-  MdDownload,
   MdPerson,
   MdNote
 } from 'react-icons/md';
-import * as XLSX from 'xlsx';
+
 
 const ChecklistView = ({
   event: propEvent,
@@ -29,7 +27,7 @@ const ChecklistView = ({
   showManualAddModal: externalShowModal, // 외부에서 제어하는 모달 상태
   setShowManualAddModal: externalSetShowModal, // 외부에서 제어하는 모달 상태 설정 함수
   checklistData, // 체크리스트 데이터 (탭별로 독립적)
-  setChecklistData, // 체크리스트 업데이트 함수 (탭별로 독립적)
+  setChecklistData: externalSetChecklistData, // 체크리스트 업데이트 함수 (탭별로 독립적)
   onChecklistChange: externalOnChecklistChange // 외부 체크리스트 변경 콜백
 }) => {
   const navigate = useNavigate();
@@ -109,8 +107,8 @@ const ChecklistView = ({
     }
     
     // 내부 체크리스트 상태 업데이트
-    if (setChecklistData) {
-      setChecklistData(newCategories);
+    if (externalSetChecklistData) {
+      externalSetChecklistData(newCategories);
     }
     
     // 기존 onChecklistChange 콜백도 유지
@@ -124,63 +122,68 @@ const ChecklistView = ({
     {
       id: 1,
       name: "사전 준비",
-      items: [
-        {
-          id: 1,
-          title: "행사장 예약",
-          type: "사전",
-          status: "완료",
-          assignee: "본부 기획부 김기획",
-          region: "본부",
-          department: "기획부",
-          assigneeName: "김기획",
-          note: "대강당 예약 완료",
-          checkDate: "2024-01-10",
-          subItems: [
-            { id: 11, title: "대강당 예약", status: "완료", assignee: "본부 기획부 김기획" },
-            { id: 12, title: "음향시설 확인", status: "진행중", assignee: "본부 기획부 김기획" }
-          ]
-        },
-        {
-          id: 2,
-          title: "홍보물 제작",
-          type: "사전",
-          status: "진행중",
-          assignee: "북구 홍보부 이홍보",
-          region: "북구",
-          department: "홍보부",
-          assigneeName: "이홍보",
-          note: "포스터 디자인 진행중",
-          checkDate: null,
-          subItems: [
-            { id: 21, title: "포스터 디자인", status: "진행중", assignee: "북구 홍보부 이홍보" },
-            { id: 22, title: "전단지 제작", status: "미진행", assignee: "북구 홍보부 이홍보" }
-          ]
-        }
-      ]
+             items: [
+         {
+           id: 1,
+           index: 1,
+           item: "행사장 예약",
+           details: "대강당 예약 완료",
+           department: "기획부",
+           personInCharge: "김기획",
+           status: "완료",
+           assignee: "본부 기획부 김기획",
+           region: "본부",
+           assigneeName: "김기획",
+           checkDate: "2024-01-10",
+           checked: true,
+           subItems: [
+             { id: 11, title: "대강당 예약", status: "완료", assignee: "본부 기획부 김기획" },
+             { id: 12, title: "음향시설 확인", status: "진행중", assignee: "본부 기획부 김기획" }
+           ]
+         },
+         {
+           id: 2,
+           index: 2,
+           item: "홍보물 제작",
+           details: "포스터 디자인 진행중",
+           department: "홍보부",
+           personInCharge: "이홍보",
+           status: "진행중",
+           assignee: "북구 홍보부 이홍보",
+           region: "북구",
+           assigneeName: "이홍보",
+           checkDate: null,
+           checked: false,
+           subItems: [
+             { id: 21, title: "포스터 디자인", status: "진행중", assignee: "북구 홍보부 이홍보" },
+             { id: 22, title: "전단지 제작", status: "미진행", assignee: "북구 홍보부 이홍보" }
+           ]
+         }
+       ]
     },
     {
       id: 2,
       name: "당일 준비",
-      items: [
-        {
-          id: 3,
-          title: "행사장 세팅",
-          type: "당일",
-          status: "미진행",
-          assignee: "광산 기획부 박기획",
-          region: "광산",
-          department: "기획부",
-          assigneeName: "박기획",
-          note: "당일 오전 8시 시작",
-          time: "08:00",
-          checkDate: null,
-          subItems: [
-            { id: 31, title: "의자 배치", status: "미진행", assignee: "광산 기획부 박기획" },
-            { id: 32, title: "음향 테스트", status: "미진행", assignee: "광산 기획부 박기획" }
-          ]
-        }
-      ]
+             items: [
+         {
+           id: 3,
+           index: 3,
+           item: "행사장 세팅",
+           details: "당일 오전 8시 시작",
+           department: "기획부",
+           personInCharge: "박기획",
+           status: "미진행",
+           assignee: "광산 기획부 박기획",
+           region: "광산",
+           assigneeName: "박기획",
+           checkDate: null,
+           checked: false,
+           subItems: [
+             { id: 31, title: "의자 배치", status: "미진행", assignee: "광산 기획부 박기획" },
+             { id: 32, title: "음향 테스트", status: "미진행", assignee: "광산 기획부 박기획" }
+           ]
+         }
+       ]
     }
   ];
 
@@ -189,10 +192,18 @@ const ChecklistView = ({
     checklistData && checklistData.length > 0 ? checklistData : defaultCategories
   );
 
+  // setChecklistData가 변경될 때 categories 업데이트
+  useEffect(() => {
+    if (checklistData && checklistData.length > 0) {
+      console.log('ChecklistView: Updating categories from external data:', checklistData);
+      setCategories(checklistData);
+    }
+  }, [checklistData]);
+
   const [expandedCategories, setExpandedCategories] = useState(new Set([1, 2]));
   const [editingItemId, setEditingItemId] = useState(null);
   const [editingSubItemId, setEditingSubItemId] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', assignee: '', note: '', time: '' });
+  const [editForm, setEditForm] = useState({ title: '', assignee: '' });
   const [editSubItemForm, setEditSubItemForm] = useState({ title: '', assignee: '' });
   const editInputRef = useRef();
   const editSubItemInputRef = useRef();
@@ -205,18 +216,17 @@ const ChecklistView = ({
   const setShowManualAddModal = externalSetShowModal || setInternalShowModal;
   const [newItemForm, setNewItemForm] = useState({
     title: '',
-    type: '당일',
-    department: '총무부',
-    name: '',
-    region: '본부',
-    note: '',
-    time: '',
     categoryId: 2, // 기본값: 당일 준비
     subItems: [] // 세부항목 추가
   });
 
   // 세부항목 관리 상태
   const [newSubItemTitle, setNewSubItemTitle] = useState('');
+  const [newSubItemForm, setNewSubItemForm] = useState({
+    department: '총무부',
+    name: '',
+    region: '본부'
+  });
 
   // 새 항목에 세부항목 추가
   const addSubItemToNewItem = () => {
@@ -229,7 +239,10 @@ const ChecklistView = ({
       id: Date.now(),
       title: newSubItemTitle,
       status: '미진행',
-      assignee: `${newItemForm.region} ${newItemForm.department} ${newItemForm.name}`
+      assignee: `${newSubItemForm.region} ${newSubItemForm.department} ${newSubItemForm.name}`,
+      department: newSubItemForm.department,
+      personInCharge: newSubItemForm.name,
+      region: newSubItemForm.region
     };
 
     setNewItemForm(f => ({
@@ -238,6 +251,12 @@ const ChecklistView = ({
     }));
 
     setNewSubItemTitle('');
+    // 세부항목 폼 초기화
+    setNewSubItemForm({
+      department: '총무부',
+      name: '',
+      region: '본부'
+    });
   };
 
   // 새 항목에서 세부항목 삭제
@@ -248,36 +267,27 @@ const ChecklistView = ({
     }));
   };
 
-  // 지역 변경 시 부서 자동 설정
-  const handleRegionChange = (newRegion) => {
+
+
+  // 세부항목 지역 변경 시 부서 자동 설정
+  const handleSubItemRegionChange = (newRegion) => {
     const availableDepartments = regionDepartments[newRegion] || [];
-    setNewItemForm(f => ({
+    setNewSubItemForm(f => ({
       ...f,
       region: newRegion,
       department: availableDepartments[0] || '총무부'
     }));
   };
 
-  // 카테고리 변경 시 유형 자동 설정
+  // 카테고리 변경 시 처리
   const handleCategoryChange = (categoryId) => {
-    const selectedCategory = categories.find(cat => cat.id === Number(categoryId));
-    let defaultType = '사전';
-    
-    if (selectedCategory) {
-      // 카테고리 이름에 따라 기본 유형 설정
-      if (selectedCategory.name.includes('당일')) {
-        defaultType = '당일';
-      } else if (selectedCategory.name.includes('사전')) {
-        defaultType = '사전';
-      }
-    }
-
     setNewItemForm(f => ({
       ...f,
-      categoryId: Number(categoryId),
-      type: defaultType
+      categoryId: Number(categoryId)
     }));
   };
+
+
 
   // 컴포넌트가 마운트될 때 초기 체크리스트 데이터를 부모에게 전달
   useEffect(() => {
@@ -285,35 +295,30 @@ const ChecklistView = ({
     notifyChecklistChange(categories);
   }, []); // 빈 의존성 배열로 마운트 시에만 실행
 
-  // checklistData가 변경될 때 categories 업데이트
-  useEffect(() => {
-    if (checklistData && checklistData.length > 0) {
-      console.log('ChecklistView: Updating categories from external data:', checklistData);
-      setCategories(checklistData);
-    }
-  }, [checklistData]);
+
 
   // 수동으로 새로운 항목 추가
   const handleManualAdd = () => {
-    if (!newItemForm.title.trim() || !newItemForm.name.trim()) {
-      alert('제목과 이름은 필수 입력 항목입니다.');
+    if (!newItemForm.title.trim()) {
+      alert('항목명은 필수 입력 항목입니다.');
       return;
     }
 
-    const newItem = {
-      id: Date.now(),
-      title: newItemForm.title,
-      type: newItemForm.type,
-      status: '미진행',
-      assignee: `${newItemForm.region} ${newItemForm.department} ${newItemForm.name}`,
-      region: newItemForm.region,
-      department: newItemForm.department, // 부서 정보를 별도로 저장
-      assigneeName: newItemForm.name, // 담당자 이름을 별도로 저장
-      note: newItemForm.note,
-      time: newItemForm.type === '당일' ? newItemForm.time : null,
-      checkDate: null,
-      subItems: newItemForm.subItems || [] // 세부항목 포함
-    };
+         const newItem = {
+       id: Date.now(),
+       index: Date.now(),
+       item: newItemForm.title,
+       details: newItemForm.title,
+       department: '', // 대항목은 담당자 없음
+       personInCharge: '', // 대항목은 담당자 없음
+       status: '미진행',
+       assignee: '', // 대항목은 담당자 없음
+       region: '', // 대항목은 지역 없음
+       assigneeName: '', // 대항목은 담당자 없음
+       checkDate: null,
+       checked: false,
+       subItems: newItemForm.subItems || [] // 세부항목 포함
+     };
 
     setCategories(prevCategories => {
       const newCategories = prevCategories.map(category =>
@@ -334,12 +339,6 @@ const ChecklistView = ({
     // 폼 초기화
     setNewItemForm({
       title: '',
-      type: '당일',
-      department: '총무부',
-      name: '',
-      region: '본부',
-      note: '',
-      time: '',
       categoryId: 2,
       subItems: []
     });
@@ -371,14 +370,15 @@ const ChecklistView = ({
               ...category,
               items: category.items.map(item =>
                 item.id === itemId
-                  ? {
-                      ...item,
-                      status: newStatus,
-                      subItems: item.subItems.map(subItem => ({
-                        ...subItem,
-                        status: newStatus
-                      }))
-                    }
+                                       ? {
+                         ...item,
+                         status: newStatus,
+                         checked: newStatus === '완료',
+                         subItems: item.subItems.map(subItem => ({
+                           ...subItem,
+                           status: newStatus
+                         }))
+                       }
                   : item
               )
             }
@@ -389,7 +389,7 @@ const ChecklistView = ({
       if (onTimelineUpdate) {
         const category = newCategories.find(c => c.id === categoryId);
         const item = category?.items.find(i => i.id === itemId);
-        if (item && item.type === '당일') {
+        if (item) {
           onTimelineUpdate(categoryId, itemId, newStatus);
         }
       }
@@ -417,11 +417,12 @@ const ChecklistView = ({
                   );
                   // 하위 항목이 모두 완료면 상위 항목도 완료, 아니면 미진행
                   const allDone = newSubItems.length > 0 && newSubItems.every(subItem => subItem.status === '완료');
-                  return {
-                    ...item,
-                    subItems: newSubItems,
-                    status: allDone ? '완료' : '미진행',
-                  };
+                                     return {
+                     ...item,
+                     subItems: newSubItems,
+                     status: allDone ? '완료' : '미진행',
+                     checked: allDone,
+                   };
                 }
                 return item;
               })
@@ -447,100 +448,19 @@ const ChecklistView = ({
   const getStatusIcon = (status) => {
     switch (status) {
       case '완료': return <MdCheckCircle className="w-5 h-5 text-green-600" />;
-      case '진행중': return <MdSchedule className="w-5 h-5 text-blue-600" />;
       case '미진행': return <MdRadioButtonUnchecked className="w-5 h-5 text-gray-400" />;
       default: return <MdRadioButtonUnchecked className="w-5 h-5 text-gray-400" />;
     }
   };
 
-  const handleExcelUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const workbook = XLSX.read(e.target.result, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const data = XLSX.utils.sheet_to_json(worksheet);
 
-          // Excel 데이터를 체크리스트 형식으로 변환
-          const newCategories = [];
-          let currentCategory = null;
 
-          data.forEach((row, index) => {
-            if (row['카테고리']) {
-              if (currentCategory) {
-                newCategories.push(currentCategory);
-              }
-              currentCategory = {
-                id: Date.now() + index,
-                name: row['카테고리'],
-                items: []
-              };
-            } else if (row['항목명'] && currentCategory) {
-              const isDay = row['구분'] === '당일';
-              currentCategory.items.push({
-                id: Date.now() + index + 1000,
-                title: row['항목명'],
-                type: row['구분'] || '사전',
-                status: '미진행',
-                assignee: row['담당자'] || '',
-                region: row['지역'] || '본부',
-                note: row['비고'] || '',
-                time: isDay ? row['시간'] || '' : undefined,
-                checkDate: null,
-                subItems: []
-              });
-            }
-          });
 
-          if (currentCategory) {
-            newCategories.push(currentCategory);
-          }
-
-          setCategories(newCategories);
-          alert('Excel 파일이 성공적으로 업로드되었습니다.');
-        } catch (error) {
-          alert('Excel 파일 처리 중 오류가 발생했습니다.');
-          console.error('Excel upload error:', error);
-        }
-      };
-      reader.readAsBinaryString(file);
-    }
-  };
-
-  const handleExcelDownload = (includeStatus = true) => {
-    const data = [];
-    
-    categories.forEach(category => {
-      category.items.forEach(item => {
-        data.push({
-          '카테고리': category.name,
-          '항목명': item.title,
-          '구분': item.type,
-          '상태': includeStatus ? item.status : '',
-          '담당자': item.assignee,
-          '비고': item.note,
-          '체크일': item.checkDate || '',
-          '시간': item.type === '당일' ? (item.time || '') : '',
-          '지역': item.region
-        });
-      });
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, '체크리스트');
-    
-    const fileName = `${event.title}_체크리스트_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-  };
 
   // 항목 수정 시작
   const handleEditStart = (categoryId, item) => {
     setEditingItemId(item.id);
-    setEditForm({ title: item.title, assignee: item.assignee, note: item.note, time: item.time });
+    setEditForm({ title: item.item || item.title, assignee: item.assignee });
     setTimeout(() => { if (editInputRef.current) editInputRef.current.focus(); }, 100);
   };
 
@@ -674,30 +594,8 @@ const ChecklistView = ({
               수동 추가
             </button>
             
-            <label className="cursor-pointer bg-gray-50 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2">
-              <MdUpload className="w-4 h-4" />
-              Excel 업로드
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleExcelUpload}
-                className="hidden"
-              />
-            </label>
-            <button
-              onClick={() => handleExcelDownload(true)}
-              className="bg-green-50 text-green-600 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-2"
-            >
-              <MdDownload className="w-4 h-4" />
-              상태 포함 다운로드
-            </button>
-            <button
-              onClick={() => handleExcelDownload(false)}
-              className="bg-gray-50 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
-            >
-              <MdDownload className="w-4 h-4" />
-              템플릿 다운로드
-            </button>
+                         
+
           </div>
         </div>
       )}
@@ -754,35 +652,16 @@ const ChecklistView = ({
                                   onKeyDown={e => { if (e.key === 'Enter') handleEditSave(category.id, item.id); }}
                                   placeholder="항목명"
                                 />
-                                {item.type === '당일' && (
-                                  <input
-                                    type="time"
-                                    className="border-b border-primary-200 outline-none px-1 text-sm text-gray-600 bg-gray-50"
-                                    value={editForm.time || ''}
-                                    onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
-                                    placeholder="시간"
-                                  />
-                                )}
+
                               </div>
                             ) : (
-                              <span className="font-medium text-gray-800">{item.title}</span>
+                              <span className="font-medium text-gray-800">{item.item || item.title}</span>
                             )}
                           </button>
                           <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(item.status)}`}>
                             {item.status}
                           </span>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            item.type === '사전' ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'
-                          }`}>
-                            {item.type}
-                          </span>
-                          {/* 당일 항목일 경우 시간 표시 */}
-                          {item.type === '당일' && item.time && (
-                            <span className="px-2 py-1 rounded-full text-xs bg-purple-50 text-purple-600 flex items-center gap-1">
-                              <MdSchedule className="w-3 h-3" />
-                              {item.time}
-                            </span>
-                          )}
+
                           {/* 하위 항목 진행률 표시 */}
                           {item.subItems && item.subItems.length > 0 && (
                             (() => {
@@ -913,10 +792,10 @@ const ChecklistView = ({
         <div className="bg-white p-6 rounded-lg border border-gray-200 mt-10">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">진행 현황</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {filteredCategories.map(category => {
-              const totalItems = category.items.length;
-              const completedItems = category.items.filter(item => item.status === '완료').length;
-              const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+                         {filteredCategories.map(category => {
+               const totalItems = category.items.length;
+               const completedItems = category.items.filter(item => item.checked || item.status === '완료').length;
+               const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
               return (
                 <div key={category.id} className="text-center">
@@ -950,18 +829,7 @@ const ChecklistView = ({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">지역</label>
-                <select
-                  value={newItemForm.region}
-                  onChange={(e) => handleRegionChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {regions.map(region => (
-                    <option key={region} value={region}>{region}</option>
-                  ))}
-                </select>
-              </div>
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">항목명 *</label>
@@ -974,68 +842,11 @@ const ChecklistView = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">유형</label>
-                <select
-                  value={newItemForm.type}
-                  onChange={(e) => setNewItemForm(f => ({ ...f, type: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="사전">사전</option>
-                  <option value="당일">당일</option>
-                </select>
-              </div>
 
-              {newItemForm.type === '당일' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">시간</label>
-                  <input
-                    type="time"
-                    value={newItemForm.time}
-                    onChange={(e) => setNewItemForm(f => ({ ...f, time: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">담당자 *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">부서</label>
-                    <select
-                      value={newItemForm.department}
-                      onChange={(e) => setNewItemForm(f => ({ ...f, department: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    >
-                      {regionDepartments[newItemForm.region]?.map(dept => (
-                        <option key={dept} value={dept}>{dept}</option>
-                      )) || []}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">이름</label>
-                    <input
-                      type="text"
-                      value={newItemForm.name}
-                      onChange={(e) => setNewItemForm(f => ({ ...f, name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      placeholder="이름"
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">비고</label>
-                <textarea
-                  value={newItemForm.note}
-                  onChange={(e) => setNewItemForm(f => ({ ...f, note: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows="3"
-                  placeholder="추가 설명을 입력하세요"
-                />
-              </div>
+
+
 
               {/* 세부항목 섹션 */}
               <div>
@@ -1045,12 +856,21 @@ const ChecklistView = ({
                 {newItemForm.subItems.length > 0 && (
                   <div className="mb-3 space-y-2">
                     {newItemForm.subItems.map((subItem, index) => (
-                      <div key={subItem.id} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
-                        <span className="text-sm text-gray-700">{index + 1}. {subItem.title}</span>
+                      <div key={subItem.id} className="flex items-center justify-between bg-gray-50 p-3 rounded border">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-700 mb-1">
+                            {index + 1}. {subItem.title}
+                          </div>
+                          {subItem.assignee && (
+                            <div className="text-xs text-gray-500">
+                              담당: {subItem.assignee}
+                            </div>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeSubItemFromNewItem(subItem.id)}
-                          className="text-red-500 hover:text-red-700 text-sm"
+                          className="text-red-500 hover:text-red-700 text-sm ml-2"
                         >
                           <MdDelete className="w-4 h-4" />
                         </button>
@@ -1060,6 +880,7 @@ const ChecklistView = ({
                 )}
 
                 {/* 새 세부항목 추가 */}
+                <div className="space-y-3 p-3 bg-gray-50 rounded border">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1072,14 +893,55 @@ const ChecklistView = ({
                   <button
                     type="button"
                     onClick={addSubItemToNewItem}
-                    className="px-3 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors text-sm flex items-center gap-1"
+                      className="px-3 py-2 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors text-sm flex items-center gap-1"
                   >
                     <MdAdd className="w-4 h-4" />
                     추가
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  세부항목을 추가하면 더 세밀한 작업 관리가 가능합니다.
+                  
+                  {/* 세부항목 담당자 설정 */}
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">지역</label>
+                    <select
+                      value={newSubItemForm.region}
+                      onChange={(e) => handleSubItemRegionChange(e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      {regions.map(region => (
+                        <option key={region} value={region}>{region}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">부서</label>
+                      <select
+                        value={newSubItemForm.department}
+                        onChange={(e) => setNewSubItemForm(f => ({ ...f, department: e.target.value }))}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        {regionDepartments[newSubItemForm.region]?.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        )) || []}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">이름</label>
+                      <input
+                        type="text"
+                        value={newSubItemForm.name}
+                        onChange={(e) => setNewSubItemForm(f => ({ ...f, name: e.target.value }))}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        placeholder="이름"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-gray-500 mt-2">
+                  세부항목을 추가하면 더 세밀한 작업 관리가 가능합니다. 각 세부항목마다 개별 담당자를 설정할 수 있습니다.
                 </p>
               </div>
             </div>
