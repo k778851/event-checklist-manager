@@ -200,7 +200,15 @@ const ChecklistView = ({
     }
   }, [checklistData]);
 
-  const [expandedCategories, setExpandedCategories] = useState(new Set([1, 2]));
+  // 모든 카테고리를 기본적으로 열어두기
+  const [expandedCategories, setExpandedCategories] = useState(new Set());
+  
+  // 카테고리가 변경될 때마다 모든 카테고리를 열어두기
+  useEffect(() => {
+    const allCategoryIds = categories.map(category => category.id);
+    setExpandedCategories(new Set(allCategoryIds));
+  }, [categories]);
+
   const [editingItemId, setEditingItemId] = useState(null);
   const [editingSubItemId, setEditingSubItemId] = useState(null);
   const [editForm, setEditForm] = useState({ title: '', assignee: '' });
@@ -223,6 +231,15 @@ const ChecklistView = ({
   // 세부항목 관리 상태
   const [newSubItemTitle, setNewSubItemTitle] = useState('');
   const [newSubItemForm, setNewSubItemForm] = useState({
+    department: '총무부',
+    name: '',
+    region: '본부'
+  });
+
+  // 기존 항목에 세부항목 추가를 위한 상태
+  const [addingSubItemToItem, setAddingSubItemToItem] = useState(null);
+  const [newSubItemForExisting, setNewSubItemForExisting] = useState({
+    title: '',
     department: '총무부',
     name: '',
     region: '본부'
@@ -279,6 +296,16 @@ const ChecklistView = ({
     }));
   };
 
+  // 기존 세부항목에 세부항목 추가 시 지역 변경 시 부서 자동 설정
+  const handleExistingSubItemRegionChange = (newRegion) => {
+    const availableDepartments = regionDepartments[newRegion] || [];
+    setNewSubItemForExisting(prev => ({
+      ...prev,
+      region: newRegion,
+      department: availableDepartments[0] || '총무부'
+    }));
+  };
+
   // 카테고리 변경 시 처리
   const handleCategoryChange = (categoryId) => {
     setNewItemForm(f => ({
@@ -287,6 +314,55 @@ const ChecklistView = ({
     }));
   };
 
+  // 기존 항목에 세부항목 추가
+  const addSubItemToExistingItem = (categoryId, itemId) => {
+    if (!newSubItemForExisting.title.trim()) {
+      alert('세부항목 제목을 입력하세요.');
+      return;
+    }
+
+    const newSubItem = {
+      id: Date.now(),
+      title: newSubItemForExisting.title,
+      status: '미진행',
+      assignee: `${newSubItemForExisting.region} ${newSubItemForExisting.department} ${newSubItemForExisting.name}`,
+      department: newSubItemForExisting.department,
+      personInCharge: newSubItemForExisting.name,
+      region: newSubItemForExisting.region
+    };
+
+    setCategories(prevCategories => {
+      const newCategories = prevCategories.map(category =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map(item =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      subItems: [...item.subItems, newSubItem]
+                    }
+                  : item
+              )
+            }
+          : category
+      );
+
+      // 부모 컴포넌트에 체크리스트 변경 알림
+      notifyChecklistChange(newCategories);
+      
+      return newCategories;
+    });
+
+    setAddingSubItemToItem(null);
+    setNewSubItemForExisting({ title: '', department: '총무부', name: '', region: '본부' });
+  };
+
+  // 세부항목 추가 취소
+  const cancelAddSubItem = () => {
+    setAddingSubItemToItem(null);
+    setNewSubItemForExisting({ title: '', department: '총무부', name: '', region: '본부' });
+  };
 
 
   // 컴포넌트가 마운트될 때 초기 체크리스트 데이터를 부모에게 전달
@@ -683,6 +759,13 @@ const ChecklistView = ({
                           ) : (
                             <>
                               <button
+                                onClick={() => setAddingSubItemToItem(item.id)}
+                                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-gray-100 rounded-full transition-colors"
+                                title="세부항목 추가"
+                              >
+                                <MdAdd className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => handleEditStart(category.id, item)}
                                 className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-full transition-colors"
                               >
@@ -777,6 +860,69 @@ const ChecklistView = ({
                                 </div>
                               </div>
                             ))}
+                          </div>
+                        )}
+
+                        {/* 세부항목 추가 폼 */}
+                        {addingSubItemToItem === item.id && (
+                          <div className="bg-gray-50 p-3 rounded border mt-3">
+                            <div className="space-y-3">
+                              <div>
+                                <input
+                                  type="text"
+                                  value={newSubItemForExisting.title}
+                                  onChange={(e) => setNewSubItemForExisting(prev => ({ ...prev, title: e.target.value }))}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="세부항목 제목을 입력하세요"
+                                  autoFocus
+                                />
+                              </div>
+                              
+                              <div className="grid grid-cols-3 gap-2">
+                                <select
+                                  value={newSubItemForExisting.region}
+                                  onChange={(e) => handleExistingSubItemRegionChange(e.target.value)}
+                                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                >
+                                  {regions.map(region => (
+                                    <option key={region} value={region}>{region}</option>
+                                  ))}
+                                </select>
+                                
+                                <select
+                                  value={newSubItemForExisting.department}
+                                  onChange={(e) => setNewSubItemForExisting(prev => ({ ...prev, department: e.target.value }))}
+                                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                >
+                                  {regionDepartments[newSubItemForExisting.region]?.map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                  )) || []}
+                                </select>
+                                
+                                <input
+                                  type="text"
+                                  value={newSubItemForExisting.name}
+                                  onChange={(e) => setNewSubItemForExisting(prev => ({ ...prev, name: e.target.value }))}
+                                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  placeholder="이름"
+                                />
+                              </div>
+                              
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => addSubItemToExistingItem(category.id, item.id)}
+                                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                                >
+                                  추가
+                                </button>
+                                <button
+                                  onClick={cancelAddSubItem}
+                                  className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400 transition-colors"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>

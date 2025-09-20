@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import LoginScreen from './LoginScreen';
 import OTPScreen from './OTPScreen';
+import LoadingScreen from './LoadingScreen';
 
 const AuthContainer = ({ onAuthSuccess }) => {
-  const [currentStep, setCurrentStep] = useState('login'); // 'login' 또는 'otp'
+  const [currentStep, setCurrentStep] = useState('login'); // 'login', 'otp', 'loading'
   const [uniqueId, setUniqueId] = useState('');
 
   const handleLoginNext = () => {
@@ -15,15 +16,21 @@ const AuthContainer = ({ onAuthSuccess }) => {
   };
 
   const handleOtpVerify = (otpCode) => {
-    // 실제 환경에서는 서버에 OTP 검증 요청을 보내야 합니다
-    console.log('OTP 검증 성공:', { uniqueId, otpCode });
+    // OTP 검증 시작 - 로딩 상태로 전환
+    setCurrentStep('loading');
     
-    // 인증 성공 시 콜백 호출
-    onAuthSuccess({
-      uniqueId,
-      otpCode,
-      timestamp: new Date().toISOString()
-    });
+    // 실제 환경에서는 서버에 OTP 검증 요청을 보내야 합니다
+    // 여기서는 짧은 지연 후 성공으로 처리
+    setTimeout(() => {
+      console.log('OTP 검증 성공:', { uniqueId, otpCode });
+      
+      // 인증 성공 시 콜백 호출
+      onAuthSuccess({
+        uniqueId,
+        otpCode,
+        timestamp: new Date().toISOString()
+      });
+    }, 1500); // 1.5초 로딩
   };
 
   return (
@@ -35,12 +42,14 @@ const AuthContainer = ({ onAuthSuccess }) => {
             uniqueId={uniqueId}
             setUniqueId={setUniqueId}
           />
-        ) : (
+        ) : currentStep === 'otp' ? (
           <OTPScreen
             onBack={handleOtpBack}
             onVerify={handleOtpVerify}
             uniqueId={uniqueId}
           />
+        ) : (
+          <LoadingScreen message="OTP 인증 중입니다..." />
         )}
       </div>
       
