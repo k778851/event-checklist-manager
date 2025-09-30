@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { MdAdd, MdEdit, MdDelete, MdSave, MdClose, MdInfo, MdSearch, MdLocationOn, MdSecurity } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdSave, MdClose, MdInfo, MdSearch, MdSecurity } from 'react-icons/md';
+import { useAuth } from '../contexts/AuthContext';
 
 const Admin = () => {
+  const { currentUser, hasPermission, ROLES } = useAuth();
+  
   // 고정된 지역 목록
   const REGIONS = ['본부', '북구', '광산', '담양', '장성'];
   
@@ -15,14 +18,15 @@ const Admin = () => {
     '보건후생복지부', '봉사교통부'
   ];
 
-  // 현재 로그인한 사용자 정보 (실제로는 인증 컨텍스트나 props로 받아야 함)
-  const [currentUser] = useState({
-    id: 1,
-    name: '김관리',
-    region: '본부',
-    department: '기획부',
-    role: '총괄관리자'
-  });
+  // 권한에 따른 역할 라벨
+  const getRoleLabel = (role) => {
+    switch (role) {
+      case ROLES.SUPER_ADMIN: return '총괄관리자';
+      case ROLES.ADMIN: return '관리자';
+      case ROLES.USER: return '사용자';
+      default: return '알 수 없음';
+    }
+  };
 
   // 고유번호 생성 함수
   function generateUniqueId() {
@@ -34,9 +38,11 @@ const Admin = () => {
 
   // 사용자 관리 상태
   const [users, setUsers] = useState([
-    { id: 1, name: '김관리', region: '본부', department: '기획부', role: '총괄관리자', uniqueId: '00420000-00123' },
-    { id: 2, name: '이담당', region: '북구', department: '홍보부', role: '관리자', uniqueId: '00420000-00123' },
-    { id: 3, name: '박실무', region: '광산', department: '전도부', role: '사용자', uniqueId: '00420000-00123' }
+    { id: 1, name: '김총괄', region: '본부', department: '본부', role: ROLES.SUPER_ADMIN, uniqueId: '00420000-00123' },
+    { id: 2, name: '이관리', region: '본부', department: '기획부', role: ROLES.ADMIN, uniqueId: '00420000-00124' },
+    { id: 3, name: '박홍보', region: '북구', department: '홍보부', role: ROLES.ADMIN, uniqueId: '00420000-00125' },
+    { id: 4, name: '최찬양', region: '광산', department: '찬양부', role: ROLES.USER, uniqueId: '00420000-00126' },
+    { id: 5, name: '정전도', region: '서구', department: '전도부', role: ROLES.USER, uniqueId: '00420000-00127' }
   ]);
 
   // 사용자 수정 모드 상태
@@ -46,7 +52,7 @@ const Admin = () => {
     name: '',
     region: '',
     department: '',
-    role: '사용자',
+    role: ROLES.USER,
     uniqueId: ''
   });
 
@@ -57,13 +63,19 @@ const Admin = () => {
   const [selectedRole, setSelectedRole] = useState('');
 
   // 권한 확인 함수들
-  const isSuperAdmin = () => currentUser.role === '총괄관리자';
-  const canEditRole = () => isSuperAdmin();
+  const isSuperAdmin = () => currentUser?.role === ROLES.SUPER_ADMIN;
+  const canEditRole = () => hasPermission('MANAGE_USERS');
   const canEditUser = (user) => {
-    if (isSuperAdmin()) return true;
-    if (currentUser.role === '관리자') {
-      return user.department === currentUser.department;
+    if (!currentUser) return false;
+    
+    // 총괄관리자는 모든 사용자 편집 가능
+    if (currentUser.role === ROLES.SUPER_ADMIN) return true;
+    
+    // 관리자는 자신의 부서 내 사용자만 편집 가능 (단, 다른 관리자나 총괄관리자는 편집 불가)
+    if (currentUser.role === ROLES.ADMIN) {
+      return user.department === currentUser.department && user.role === ROLES.USER;
     }
+    
     return false;
   };
 
@@ -182,7 +194,7 @@ const Admin = () => {
       <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4 flex items-center gap-2">
         <MdSecurity className="w-5 h-5 text-blue-600" />
         <span className="text-blue-800 text-sm">
-          현재 로그인: <b>{currentUser.name}</b> ({currentUser.department}) - <b>{currentUser.role}</b>
+          현재 로그인: <b>{currentUser?.name}</b> ({currentUser?.department}) - <b>{getRoleLabel(currentUser?.role)}</b>
         </span>
       </div>
       

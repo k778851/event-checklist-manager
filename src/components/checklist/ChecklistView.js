@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   MdAdd,
   MdExpandMore,
@@ -10,7 +11,8 @@ import {
   MdRadioButtonUnchecked,
   MdUpload,
   MdPerson,
-  MdNote
+  MdNote,
+  MdAccessTime
 } from 'react-icons/md';
 
 
@@ -32,6 +34,7 @@ const ChecklistView = ({
 }) => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { currentUser, hasPermission, canAccessDepartment } = useAuth();
   // 샘플 행사 데이터 (Dashboard.js와 동일하게)
   const events = [
     { id: 1, title: "2024 신년 행사" },
@@ -101,18 +104,16 @@ const ChecklistView = ({
   const notifyChecklistChange = (newCategories) => {
     console.log('ChecklistView: Notifying parent of changes:', newCategories);
     
-    // 외부 체크리스트 변경 콜백 호출
+    // 외부 체크리스트 변경 콜백만 호출 (중복 방지)
     if (externalOnChecklistChange) {
       externalOnChecklistChange(newCategories);
     }
-    
-    // 내부 체크리스트 상태 업데이트
-    if (externalSetChecklistData) {
+    // 외부 콜백이 없는 경우에만 내부 상태 업데이트
+    else if (externalSetChecklistData) {
       externalSetChecklistData(newCategories);
     }
-    
-    // 기존 onChecklistChange 콜백도 유지
-    if (onChecklistChange) {
+    // 기존 체크리스트 변경 콜백 호출 (하위 호환성)
+    else if (onChecklistChange) {
       onChecklistChange(newCategories);
     }
   };
@@ -165,40 +166,31 @@ const ChecklistView = ({
       id: 2,
       name: "당일 준비",
              items: [
-         {
-           id: 3,
-           index: 3,
-           item: "행사장 세팅",
-           details: "당일 오전 8시 시작",
-           department: "기획부",
-           personInCharge: "박기획",
-           status: "미진행",
-           assignee: "광산 기획부 박기획",
-           region: "광산",
-           assigneeName: "박기획",
-           checkDate: null,
-           checked: false,
-           subItems: [
-             { id: 31, title: "의자 배치", status: "미진행", assignee: "광산 기획부 박기획" },
-             { id: 32, title: "음향 테스트", status: "미진행", assignee: "광산 기획부 박기획" }
-           ]
-         }
+        {
+          id: 3,
+          index: 3,
+          item: "행사장 세팅",
+          details: "당일 오전 8시 시작",
+          time: "08:00", // 시간 정보 추가
+          department: "기획부",
+          personInCharge: "박기획",
+          status: "미진행",
+          assignee: "광산 기획부 박기획",
+          region: "광산",
+          assigneeName: "박기획",
+          checkDate: null,
+          checked: false,
+          subItems: [
+            { id: 31, title: "의자 배치", status: "미진행", assignee: "광산 기획부 박기획" },
+            { id: 32, title: "음향 테스트", status: "미진행", assignee: "광산 기획부 박기획" }
+          ]
+        }
        ]
     }
   ];
 
-  // 외부에서 전달받은 데이터가 있으면 사용, 없으면 기본값 사용
-  const [categories, setCategories] = useState(
-    checklistData && checklistData.length > 0 ? checklistData : defaultCategories
-  );
-
-  // setChecklistData가 변경될 때 categories 업데이트
-  useEffect(() => {
-    if (checklistData && checklistData.length > 0) {
-      console.log('ChecklistView: Updating categories from external data:', checklistData);
-      setCategories(checklistData);
-    }
-  }, [checklistData]);
+  // 외부에서 전달받은 데이터를 직접 사용하거나 기본값 사용
+  const categories = (checklistData && checklistData.length > 0) ? checklistData : defaultCategories;
 
   // 모든 카테고리를 기본적으로 열어두기
   const [expandedCategories, setExpandedCategories] = useState(new Set());
@@ -224,7 +216,8 @@ const ChecklistView = ({
   const setShowManualAddModal = externalSetShowModal || setInternalShowModal;
   const [newItemForm, setNewItemForm] = useState({
     title: '',
-    categoryId: 2, // 기본값: 당일 준비
+    categoryId: categoryFilter === '사전 준비' ? 1 : 2, // categoryFilter에 따라 적절한 ID 설정
+    time: '09:00', // 시간 필드 추가
     subItems: [] // 세부항목 추가
   });
 
@@ -235,6 +228,7 @@ const ChecklistView = ({
     name: '',
     region: '본부'
   });
+
 
   // 기존 항목에 세부항목 추가를 위한 상태
   const [addingSubItemToItem, setAddingSubItemToItem] = useState(null);
@@ -314,6 +308,7 @@ const ChecklistView = ({
     }));
   };
 
+
   // 기존 항목에 세부항목 추가
   const addSubItemToExistingItem = (categoryId, itemId) => {
     if (!newSubItemForExisting.title.trim()) {
@@ -331,28 +326,24 @@ const ChecklistView = ({
       region: newSubItemForExisting.region
     };
 
-    setCategories(prevCategories => {
-      const newCategories = prevCategories.map(category =>
-        category.id === categoryId
-          ? {
-              ...category,
-              items: category.items.map(item =>
-                item.id === itemId
-                  ? {
-                      ...item,
-                      subItems: [...item.subItems, newSubItem]
-                    }
-                  : item
-              )
-            }
-          : category
-      );
+    const newCategories = categories.map(category =>
+      category.id === categoryId
+        ? {
+            ...category,
+            items: category.items.map(item =>
+              item.id === itemId
+                ? {
+                    ...item,
+                    subItems: [...item.subItems, newSubItem]
+                  }
+                : item
+            )
+          }
+        : category
+    );
 
-      // 부모 컴포넌트에 체크리스트 변경 알림
-      notifyChecklistChange(newCategories);
-      
-      return newCategories;
-    });
+    // 부모 컴포넌트에 체크리스트 변경 알림
+    notifyChecklistChange(newCategories);
 
     setAddingSubItemToItem(null);
     setNewSubItemForExisting({ title: '', department: '총무부', name: '', region: '본부' });
@@ -365,11 +356,7 @@ const ChecklistView = ({
   };
 
 
-  // 컴포넌트가 마운트될 때 초기 체크리스트 데이터를 부모에게 전달
-  useEffect(() => {
-    console.log('ChecklistView: Component mounted, sending initial data to parent');
-    notifyChecklistChange(categories);
-  }, []); // 빈 의존성 배열로 마운트 시에만 실행
+  // 초기 데이터 전달은 부모 컴포넌트에서 처리하므로 제거
 
 
 
@@ -380,42 +367,43 @@ const ChecklistView = ({
       return;
     }
 
-         const newItem = {
-       id: Date.now(),
-       index: Date.now(),
-       item: newItemForm.title,
-       details: newItemForm.title,
-       department: '', // 대항목은 담당자 없음
-       personInCharge: '', // 대항목은 담당자 없음
-       status: '미진행',
-       assignee: '', // 대항목은 담당자 없음
-       region: '', // 대항목은 지역 없음
-       assigneeName: '', // 대항목은 담당자 없음
-       checkDate: null,
-       checked: false,
-       subItems: newItemForm.subItems || [] // 세부항목 포함
-     };
+    // 첫 번째 세부항목의 담당자 정보를 메인 항목에 설정
+    const firstSubItem = newItemForm.subItems && newItemForm.subItems.length > 0 ? newItemForm.subItems[0] : null;
+    
+    const newItem = {
+      id: Date.now(),
+      index: Date.now(),
+      item: newItemForm.title,
+      details: newItemForm.title,
+      time: newItemForm.time, // 시간 필드 추가
+      department: firstSubItem ? firstSubItem.department : '',
+      personInCharge: firstSubItem ? firstSubItem.personInCharge : '',
+      status: '미진행',
+      assignee: firstSubItem ? firstSubItem.assignee : '',
+      region: firstSubItem ? firstSubItem.region : '본부',
+      assigneeName: firstSubItem ? firstSubItem.personInCharge : '',
+      checkDate: null,
+      checked: false,
+      subItems: newItemForm.subItems || [] // 세부항목 포함
+    };
 
-    setCategories(prevCategories => {
-      const newCategories = prevCategories.map(category =>
-        category.id === newItemForm.categoryId
-          ? {
-              ...category,
-              items: [...category.items, newItem]
-            }
-          : category
-      );
+    const newCategories = categories.map(category =>
+      category.id === newItemForm.categoryId
+        ? {
+            ...category,
+            items: [...category.items, newItem]
+          }
+        : category
+    );
 
-      // 부모 컴포넌트에 체크리스트 변경 알림
-      notifyChecklistChange(newCategories);
-      
-      return newCategories;
-    });
+    // 부모 컴포넌트에 체크리스트 변경 알림
+    notifyChecklistChange(newCategories);
 
     // 폼 초기화
     setNewItemForm({
       title: '',
-      categoryId: 2,
+      categoryId: categoryFilter === '사전 준비' ? 1 : 2, // categoryFilter에 따라 적절한 ID 설정
+      time: '09:00',
       subItems: []
     });
 
@@ -423,10 +411,26 @@ const ChecklistView = ({
     setShowManualAddModal(false);
   };
 
-  // 카테고리 필터링 적용
-  const filteredCategories = categoryFilter
-    ? categories.filter(category => category.name === categoryFilter)
-    : categories;
+  // 카테고리 및 부서별 필터링 적용
+  const filteredCategories = useMemo(() => {
+    let filtered = categoryFilter
+      ? categories.filter(category => category.name === categoryFilter)
+      : categories;
+
+    // 권한에 따른 부서별 필터링 - 총괄관리자가 아닌 경우 자신의 부서 항목만 표시
+    if (currentUser && currentUser.role !== 'super_admin') {
+      filtered = filtered.map(category => ({
+        ...category,
+        items: category.items.filter(item => {
+          // 자신의 부서 항목만 표시
+          return canAccessDepartment(item.department) || 
+                 (item.assignee && item.assignee.includes(currentUser.department));
+        })
+      }));
+    }
+
+    return filtered;
+  }, [categories, categoryFilter, currentUser, canAccessDepartment]);
 
   const toggleCategory = (categoryId) => {
     const newExpanded = new Set(expandedCategories);
@@ -439,78 +443,73 @@ const ChecklistView = ({
   };
 
   const updateItemStatus = (categoryId, itemId, newStatus) => {
-    setCategories(prevCategories => {
-      const newCategories = prevCategories.map(category =>
-        category.id === categoryId
-          ? {
-              ...category,
-              items: category.items.map(item =>
-                item.id === itemId
-                                       ? {
-                         ...item,
-                         status: newStatus,
-                         checked: newStatus === '완료',
-                         subItems: item.subItems.map(subItem => ({
-                           ...subItem,
-                           status: newStatus
-                         }))
-                       }
-                  : item
-              )
-            }
-          : category
-      );
+    // 이미 필터링된 항목들이므로 권한 체크 불필요
+    // 모든 표시된 항목은 사용자가 상태 변경할 수 있는 항목
 
-      // 타임라인 업데이트 콜백 호출
-      if (onTimelineUpdate) {
-        const category = newCategories.find(c => c.id === categoryId);
-        const item = category?.items.find(i => i.id === itemId);
-        if (item) {
-          onTimelineUpdate(categoryId, itemId, newStatus);
-        }
+    const newCategories = categories.map(category =>
+      category.id === categoryId
+        ? {
+            ...category,
+            items: category.items.map(item =>
+              item.id === itemId
+                ? {
+                   ...item,
+                   status: newStatus,
+                   checked: newStatus === '완료',
+                   subItems: item.subItems.map(subItem => ({
+                     ...subItem,
+                     status: newStatus
+                   }))
+                 }
+                : item
+            )
+          }
+        : category
+    );
+
+    // 타임라인 업데이트 콜백 호출
+    if (onTimelineUpdate) {
+      const category = newCategories.find(c => c.id === categoryId);
+      const item = category?.items.find(i => i.id === itemId);
+      if (item) {
+        onTimelineUpdate(categoryId, itemId, newStatus);
       }
+    }
 
-      // 부모 컴포넌트에 체크리스트 변경 알림
-      notifyChecklistChange(newCategories);
-      
-      return newCategories;
-    });
+    // 부모 컴포넌트에 체크리스트 변경 알림
+    notifyChecklistChange(newCategories);
   };
 
   const updateSubItemStatus = (categoryId, itemId, subItemId, newStatus) => {
-    setCategories(prevCategories => {
-      const newCategories = prevCategories.map(category =>
-        category.id === categoryId
-          ? {
-              ...category,
-              items: category.items.map(item => {
-                if (item.id === itemId) {
-                  // 하위 항목 상태 변경
-                  const newSubItems = item.subItems.map(subItem =>
-                    subItem.id === subItemId
-                      ? { ...subItem, status: newStatus }
-                      : subItem
-                  );
-                  // 하위 항목이 모두 완료면 상위 항목도 완료, 아니면 미진행
-                  const allDone = newSubItems.length > 0 && newSubItems.every(subItem => subItem.status === '완료');
-                                     return {
-                     ...item,
-                     subItems: newSubItems,
-                     status: allDone ? '완료' : '미진행',
-                     checked: allDone,
-                   };
-                }
-                return item;
-              })
-            }
-          : category
-      );
+    const newCategories = categories.map(category =>
+      category.id === categoryId
+        ? {
+            ...category,
+            items: category.items.map(item => {
+              if (item.id === itemId) {
+                // 하위 항목 상태 변경
+                const newSubItems = item.subItems.map(subItem =>
+                  subItem.id === subItemId
+                    ? { ...subItem, status: newStatus }
+                    : subItem
+                );
+                // 하위 항목이 모두 완료면 상위 항목도 완료, 아니면 미진행
+                const allDone = newSubItems.length > 0 && newSubItems.every(subItem => subItem.status === '완료');
+                return {
+                  ...item,
+                  subItems: newSubItems,
+                  status: allDone ? '완료' : '미진행',
+                  checked: allDone,
+                };
+              }
+              return item;
+            })
+          }
+        : category
+    );
 
-      // 부모 컴포넌트에 체크리스트 변경 알림
-      notifyChecklistChange(newCategories);
-      
-      return newCategories;
-    });
+    // 부모 컴포넌트에 체크리스트 변경 알림
+    notifyChecklistChange(newCategories);
   };
 
   const getStatusColor = (status) => {
@@ -542,25 +541,21 @@ const ChecklistView = ({
 
   // 항목 수정 저장
   const handleEditSave = (categoryId, itemId) => {
-    setCategories(prevCategories => {
-      const newCategories = prevCategories.map(category =>
-        category.id === categoryId
-          ? {
-              ...category,
-              items: category.items.map(item =>
-                item.id === itemId
-                  ? { ...item, ...editForm }
-                  : item
-              )
-            }
-          : category
-      );
+    const newCategories = categories.map(category =>
+      category.id === categoryId
+        ? {
+            ...category,
+            items: category.items.map(item =>
+              item.id === itemId
+                ? { ...item, ...editForm }
+                : item
+            )
+          }
+        : category
+    );
 
-      // 부모 컴포넌트에 체크리스트 변경 알림
-      notifyChecklistChange(newCategories);
-      
-      return newCategories;
-    });
+    // 부모 컴포넌트에 체크리스트 변경 알림
+    notifyChecklistChange(newCategories);
     
     setEditingItemId(null);
   };
@@ -568,16 +563,17 @@ const ChecklistView = ({
   // 항목 삭제
   const handleDeleteItem = (categoryId, itemId) => {
     if (window.confirm('정말 삭제하시겠습니까?')) {
-      setCategories(prevCategories =>
-        prevCategories.map(category =>
-          category.id === categoryId
-            ? {
-                ...category,
-                items: category.items.filter(item => item.id !== itemId)
-              }
-            : category
-        )
+      const newCategories = categories.map(category =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.filter(item => item.id !== itemId)
+            }
+          : category
       );
+      
+      // 부모 컴포넌트에 체크리스트 변경 알림
+      notifyChecklistChange(newCategories);
     }
   };
 
@@ -590,31 +586,27 @@ const ChecklistView = ({
 
   // 하위 항목 수정 저장
   const handleEditSubItemSave = (categoryId, itemId, subItemId) => {
-    setCategories(prevCategories => {
-      const newCategories = prevCategories.map(category =>
-        category.id === categoryId
-          ? {
-              ...category,
-              items: category.items.map(item => {
-                if (item.id === itemId) {
-                  const newSubItems = item.subItems.map(subItem =>
-                    subItem.id === subItemId
-                      ? { ...subItem, ...editSubItemForm }
-                      : subItem
-                  );
-                  return { ...item, subItems: newSubItems };
-                }
-                return item;
-              })
-            }
-          : category
-      );
+    const newCategories = categories.map(category =>
+      category.id === categoryId
+        ? {
+            ...category,
+            items: category.items.map(item => {
+              if (item.id === itemId) {
+                const newSubItems = item.subItems.map(subItem =>
+                  subItem.id === subItemId
+                    ? { ...subItem, ...editSubItemForm }
+                    : subItem
+                );
+                return { ...item, subItems: newSubItems };
+              }
+              return item;
+            })
+          }
+        : category
+    );
 
-      // 부모 컴포넌트에 체크리스트 변경 알림
-      notifyChecklistChange(newCategories);
-      
-      return newCategories;
-    });
+    // 부모 컴포넌트에 체크리스트 변경 알림
+    notifyChecklistChange(newCategories);
     
     setEditingSubItemId(null);
   };
@@ -622,22 +614,23 @@ const ChecklistView = ({
   // 하위 항목 삭제
   const handleDeleteSubItem = (categoryId, itemId, subItemId) => {
     if (window.confirm('정말 삭제하시겠습니까?')) {
-      setCategories(prevCategories =>
-        prevCategories.map(category =>
-          category.id === categoryId
-            ? {
-                ...category,
-                items: category.items.map(item => {
-                  if (item.id === itemId) {
-                    const newSubItems = item.subItems.filter(subItem => subItem.id !== subItemId);
-                    return { ...item, subItems: newSubItems };
-                  }
-                  return item;
-                })
-              }
-            : category
-        )
+      const newCategories = categories.map(category =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map(item => {
+                if (item.id === itemId) {
+                  const newSubItems = item.subItems.filter(subItem => subItem.id !== subItemId);
+                  return { ...item, subItems: newSubItems };
+                }
+                return item;
+              })
+            }
+          : category
       );
+      
+      // 부모 컴포넌트에 체크리스트 변경 알림
+      notifyChecklistChange(newCategories);
     }
   };
 
@@ -654,24 +647,33 @@ const ChecklistView = ({
             >
               {backButtonText}
             </button>
-            <TitleTag className="text-2xl font-bold text-gray-800">
-              {event ? event.title : '행사 정보 없음'}{titleSuffix}
-            </TitleTag>
+            <div>
+              <TitleTag className="text-2xl font-bold text-gray-800">
+                {event ? event.title : '행사 정보 없음'}{titleSuffix}
+              </TitleTag>
+              {currentUser && currentUser.role !== 'super_admin' && (
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="font-medium">{currentUser.department}</span> 부서 담당 항목만 표시
+                  <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                    {currentUser.role === 'admin' ? '관리자' : '사용자'}
+                  </span>
+                </p>
+              )}
+            </div>
           </div>
           
           {/* 관리 버튼들을 타이틀 옆으로 이동 */}
           <div className="flex gap-3">
-            {/* 수동 추가 버튼 */}
-            <button
-              onClick={() => setShowManualAddModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <MdAdd className="w-4 h-4" />
-              수동 추가
-            </button>
-            
-                         
-
+            {/* 수동 추가 버튼 - 관리자 이상만 표시 */}
+            {hasPermission('ADD_CHECKLIST_ITEMS') && (
+              <button
+                onClick={() => setShowManualAddModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <MdAdd className="w-4 h-4" />
+                수동 추가
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -707,7 +709,15 @@ const ChecklistView = ({
 
               {expandedCategories.has(category.id) && (
                 <div className="border-t border-gray-200">
-                  {category.items.map(item => (
+                  {category.items.map(item => {
+                    // 이미 필터링된 항목들이므로 모두 사용자가 접근할 수 있는 항목
+                    // 체크박스(상태 변경) 권한: 모든 사용자 가능 (이미 자신의 부서 항목만 표시됨)
+                    const canCheck = true;
+                    
+                    // 내용 수정/삭제 권한: 관리자 이상만 가능
+                    const canEditContent = currentUser?.role === 'super_admin' || currentUser?.role === 'admin';
+                    
+                    return (
                     <div key={item.id} className="p-4 border-b border-gray-100 last:border-b-0">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -715,7 +725,8 @@ const ChecklistView = ({
                             onClick={() => updateItemStatus(category.id, item.id, 
                               item.status === '완료' ? '미진행' : '완료'
                             )}
-                            className="flex items-center gap-2 hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                            className="flex items-center gap-2 p-2 rounded-lg transition-colors hover:bg-gray-50 cursor-pointer"
+                            title="상태 변경"
                           >
                             {getStatusIcon(item.status)}
                             {editingItemId === item.id ? (
@@ -731,7 +742,29 @@ const ChecklistView = ({
 
                               </div>
                             ) : (
-                              <span className="font-medium text-gray-800">{item.item || item.title}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-800">{item.item || item.title}</span>
+                                
+                                {/* 부서 정보 표시 */}
+                                {item.department && (
+                                  <span className={`text-xs px-2 py-1 rounded-full ${
+                                    canEditContent 
+                                      ? 'bg-blue-100 text-blue-700' 
+                                      : 'bg-green-100 text-green-700'
+                                  }`}>
+                                    {item.department}
+                                    {canEditContent && <span className="ml-1">✏️</span>}
+                                  </span>
+                                )}
+                                
+                                {/* 당일 준비 카테고리이고 시간 정보가 있을 때 표시 */}
+                                {category.id === 2 && item.time && (
+                                  <span className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded flex items-center gap-1">
+                                    <MdAccessTime className="w-3 h-3" />
+                                    {item.time}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </button>
                           <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(item.status)}`}>
@@ -927,7 +960,8 @@ const ChecklistView = ({
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -969,7 +1003,7 @@ const ChecklistView = ({
                   onChange={(e) => handleCategoryChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {categories.map(category => (
+                  {filteredCategories.map(category => (
                     <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
@@ -987,6 +1021,23 @@ const ChecklistView = ({
                   placeholder="항목명을 입력하세요"
                 />
               </div>
+
+              {/* 당일 준비 카테고리일 때만 시간 설정 표시 */}
+              {newItemForm.categoryId === 2 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <MdAccessTime className="inline w-4 h-4 mr-1" />
+                    시간
+                  </label>
+                  <input
+                    type="time"
+                    value={newItemForm.time}
+                    onChange={(e) => setNewItemForm(f => ({ ...f, time: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+
 
 
 

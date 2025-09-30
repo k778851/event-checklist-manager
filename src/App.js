@@ -12,7 +12,9 @@ import Help from "./pages/Help";
 import './App.css';
 import ChecklistTabs from "./components/checklist/ChecklistTabs";
 import { EventProvider } from "./contexts/EventContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import AuthContainer from "./components/auth/AuthContainer";
+import RoleSwitcher from "./components/auth/RoleSwitcher";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -59,34 +61,40 @@ function App() {
   // 인증되지 않은 경우 로그인 화면 표시
   if (!isAuthenticated) {
     return (
-      <EventProvider>
-        <AuthContainer onAuthSuccess={handleAuthSuccess} />
-      </EventProvider>
+      <AuthProvider>
+        <EventProvider>
+          <AuthContainer onAuthSuccess={handleAuthSuccess} />
+        </EventProvider>
+      </AuthProvider>
     );
   }
 
   return (
-    <EventProvider>
-      <Router basename={process.env.PUBLIC_URL}>
-        <div className="flex min-h-screen bg-gray-50">
-          <Sidebar onLogout={handleLogout} />
-          <main className="flex-1 bg-bgPrimary ml-64">
-            {/* 여기에 각 페이지 컴포넌트가 렌더링됩니다. */}
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/events" element={<EventList />} />
-              <Route path="/checklist/*" element={<ChecklistPage />} />
-              <Route path="/timeline/*" element={<TimelinePage />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/help" element={<Help />} />
-              <Route path="/checklist/pre-event/:id" element={<ChecklistTabs />} />
+    <AuthProvider>
+      <EventProvider>
+        <Router basename={process.env.PUBLIC_URL}>
+          <div className="flex min-h-screen bg-gray-50">
+            <Sidebar onLogout={handleLogout} />
+            <main className="flex-1 bg-bgPrimary ml-64">
+              {/* 여기에 각 페이지 컴포넌트가 렌더링됩니다. */}
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/events" element={<EventList />} />
+                <Route path="/checklist/*" element={<ChecklistPage />} />
+                <Route path="/timeline/*" element={<TimelinePage />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/help" element={<Help />} />
+                <Route path="/checklist/pre-event/:id" element={<ChecklistTabs />} />
 
-            </Routes>
-          </main>
-        </div>
-      </Router>
-    </EventProvider>
+              </Routes>
+            </main>
+            {/* 개발용 권한 전환 컴포넌트 */}
+            <RoleSwitcher />
+          </div>
+        </Router>
+      </EventProvider>
+    </AuthProvider>
   );
 }
 

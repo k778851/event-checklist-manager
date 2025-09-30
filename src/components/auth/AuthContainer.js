@@ -49,7 +49,12 @@ const AuthContainer = ({ onAuthSuccess }) => {
             uniqueId={uniqueId}
           />
         ) : (
-          <LoadingScreen message="OTP 인증 중입니다..." />
+          <LoadingScreen 
+            message="OTP 인증 중입니다..." 
+            onComplete={() => {
+              // 로딩 완료 후 실행할 로직 (현재는 handleOtpVerify에서 처리)
+            }}
+          />
         )}
       </div>
       

@@ -222,6 +222,7 @@ export const EventProvider = ({ children }) => {
     setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
   };
 
+
   const getEventsByStatus = (status) => {
     return events.filter(event => event.status === status);
   };
@@ -242,6 +243,52 @@ export const EventProvider = ({ children }) => {
     });
   };
 
+  // 체크리스트 데이터 업데이트 및 진행도 자동 계산
+  const updateEventChecklist = (eventId, checklistData) => {
+    setEvents(prevEvents => 
+      prevEvents.map(event => {
+        if (event.id === eventId) {
+          // 진행도 계산
+          let totalItems = 0, completedItems = 0;
+          
+          if (Array.isArray(checklistData)) {
+            checklistData.forEach(category => {
+              if (category.items && Array.isArray(category.items)) {
+                category.items.forEach(item => {
+                  totalItems++;
+                  if (item.checked || item.status === '완료') {
+                    completedItems++;
+                  }
+                });
+              }
+            });
+          }
+          
+          const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+          
+          // 디버깅용 로그 (개발 시에만 사용)
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[EventContext] ${event.title} 진행도 업데이트:`, {
+              이전진행도: event.progress,
+              새진행도: progress,
+              완료항목: completedItems,
+              전체항목: totalItems
+            });
+          }
+          
+          return {
+            ...event,
+            checklistData,
+            progress,
+            totalTasks: totalItems,
+            completedTasks: completedItems
+          };
+        }
+        return event;
+      })
+    );
+  };
+
   const value = {
     events,
     addEvent,
@@ -249,7 +296,8 @@ export const EventProvider = ({ children }) => {
     deleteEvent,
     getEventsByStatus,
     getEventsByMonth,
-    getEventsByYear
+    getEventsByYear,
+    updateEventChecklist
   };
 
   return (

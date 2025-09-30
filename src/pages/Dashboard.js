@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 // CDN 아이콘 사용
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useEvents } from '../contexts/EventContext';
+import { useAuth } from '../contexts/AuthContext';
 import EventCreateModal from '../components/events/EventCreateModal';
 
 const StatCard = ({ icon, title, value, color }) => (
@@ -21,6 +22,7 @@ const StatCard = ({ icon, title, value, color }) => (
 
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
+  const { currentUser, canAccessDepartment } = useAuth();
   
   // 날짜 기반으로 행사 상태 계산
   const getEventStatus = () => {
@@ -35,6 +37,68 @@ const EventCard = ({ event }) => {
   };
   
   const eventStatus = getEventStatus();
+  
+  // 체크리스트별 진행도 계산
+  const calculateChecklistProgress = () => {
+    if (!event.checklistData || !Array.isArray(event.checklistData)) {
+      return { 
+        preProgress: 0, 
+        dayProgress: 0,
+        preTotal: 0,
+        preCompleted: 0,
+        dayTotal: 0,
+        dayCompleted: 0
+      };
+    }
+    
+    let preTotal = 0, preCompleted = 0;
+    let dayTotal = 0, dayCompleted = 0;
+    
+    event.checklistData.forEach(category => {
+      if (!category.items || !Array.isArray(category.items)) return;
+      
+      if (category.name === "사전 준비" || category.name === "사전 체크리스트") {
+        category.items.forEach(item => {
+          // 부서별 필터링 적용 - 총괄관리자가 아닌 경우 자신의 부서 항목만 계산
+          if (currentUser?.role === 'super_admin' || canAccessDepartment(item.department) || 
+              (item.assignee && item.assignee.includes(currentUser?.department))) {
+            preTotal++;
+            if (item.checked || item.status === '완료') {
+              preCompleted++;
+            }
+          }
+        });
+      } else if (category.name === "당일 준비" || category.name === "당일 체크리스트") {
+        category.items.forEach(item => {
+          // 부서별 필터링 적용 - 총괄관리자가 아닌 경우 자신의 부서 항목만 계산
+          if (currentUser?.role === 'super_admin' || canAccessDepartment(item.department) || 
+              (item.assignee && item.assignee.includes(currentUser?.department))) {
+            dayTotal++;
+            if (item.checked || item.status === '완료') {
+              dayCompleted++;
+            }
+          }
+        });
+      }
+    });
+    
+    const preProgress = preTotal > 0 ? Math.round((preCompleted / preTotal) * 100) : 0;
+    const dayProgress = dayTotal > 0 ? Math.round((dayCompleted / dayTotal) * 100) : 0;
+    
+    return { preProgress, dayProgress, preTotal, preCompleted, dayTotal, dayCompleted };
+  };
+  
+  const { preProgress, dayProgress, preTotal, preCompleted, dayTotal, dayCompleted } = calculateChecklistProgress();
+  
+  // 디버깅용 로그 (개발 시에만 사용)
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Dashboard] ${event.title} 진행도 (${currentUser?.department || '전체'}):`, {
+      사용자: `${currentUser?.name} (${currentUser?.role})`,
+      사전: `${preProgress}% (${preCompleted}/${preTotal})`,
+      당일: `${dayProgress}% (${dayCompleted}/${dayTotal})`,
+      필터링적용: currentUser?.role !== 'super_admin'
+    });
+  }
   
   const handleChecklist = (tab) => {
     if (tab === 'timeline') {
@@ -66,13 +130,37 @@ const EventCard = ({ event }) => {
           {eventStatus}
         </span>
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-2">
-        <div 
-          className="bg-primary-500 h-2 rounded-full" 
-          style={{ width: `${event.progress}%` }}
-        />
+      
+      {/* 사전/당일 체크리스트 분리 진행도 */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs text-gray-600">사전 준비</span>
+            <span className="text-xs font-medium text-blue-600">{preProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
+            <div 
+              className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" 
+              style={{ width: `${preProgress}%` }}
+            />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">{preCompleted || 0}/{preTotal || 0} 완료</div>
+        </div>
+        
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs text-gray-600">당일 준비</span>
+            <span className="text-xs font-medium text-orange-600">{dayProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
+            <div 
+              className="bg-orange-500 h-1.5 rounded-full transition-all duration-300" 
+              style={{ width: `${dayProgress}%` }}
+            />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">{dayCompleted || 0}/{dayTotal || 0} 완료</div>
+        </div>
       </div>
-      <p className="mt-1 text-xs text-gray-500 text-right">{event.progress}% 완료</p>
       <div className="flex gap-2 pt-3">
         <button
           onClick={() => handleChecklist('pre')}
@@ -115,6 +203,7 @@ const RecentActivity = ({ activity }) => (
 const Dashboard = () => {
   // EventContext에서 행사 데이터 가져오기
   const { events, getEventsByMonth, getEventsByYear, addEvent } = useEvents();
+  const { currentUser } = useAuth();
   
   // 월 선택 상태를 가장 먼저 선언
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
@@ -283,7 +372,17 @@ const Dashboard = () => {
     <>
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">대시보드</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">대시보드</h1>
+          {currentUser && currentUser.role !== 'super_admin' && (
+            <p className="text-sm text-gray-600 mt-1">
+              <span className="font-medium">{currentUser.department}</span> 부서 전용 화면
+              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                {currentUser.role === 'admin' ? '관리자' : '사용자'}
+              </span>
+            </p>
+          )}
+        </div>
         <button 
           onClick={() => setIsCreateModalOpen(true)}
           className="bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary-700 transition-colors"

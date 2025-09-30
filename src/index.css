@@ -1,8 +1,9 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
-@import "./theme.css";
+@import "./styles/theme.css";
 @import "./assets/font/pretendardvariable.css";
+@import "./styles/mobile-responsive.css";
 
 body {
   margin: 0;
